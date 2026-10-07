@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>三軍總醫院牙科部牙科健保申報代碼查詢</title>
+  <!-- Tailwind CSS & Lucide Icons & SheetJS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Microsoft JhengHei", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .tag-btn {
+      transition: all 0.15s ease-in-out;
+      user-select: none;
+    }
+    .tag-active {
+      background-color: #2563eb !important;
+      color: #ffffff !important;
+      border-color: #2563eb !important;
+      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.35);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 pb-44 antialiased selection:bg-blue-100 min-h-screen">
+
+  <!-- 頂部導航 -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 py-3 shadow-xs">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <!-- 可愛牙齒風格圖示 (SVG) -->
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-400 to-blue-600 flex items-center justify-center shadow-md shadow-blue-500/25 shrink-0">
+          <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+            <!-- 牙齒主體輪廓 -->
+            <path d="M12 2C8.5 2 6 4 6 7.5C6 9.8 6.8 12.8 7.5 16C8 18.3 8.7 21.2 10.2 21.8C11.5 22.3 12 20.8 12 18.5C12 17 12 17 12 18.5C12 20.8 12.5 22.3 13.8 21.8C15.3 21.2 16 18.3 16.5 16C17.2 12.8 18 9.8 18 7.5C18 4 15.5 2 12 2Z" fill="white" />
+            <!-- 可愛笑臉雙眼與腮紅微笑 -->
+            <circle cx="9.5" cy="8.2" r="1.1" fill="#1e3a8a" />
+            <circle cx="14.5" cy="8.2" r="1.1" fill="#1e3a8a" />
+            <path d="M10 11.2C10.6 12.3 13.4 12.3 14 11.2" stroke="#1e3a8a" stroke-width="1.2" stroke-linecap="round" fill="none" />
+            <circle cx="8" cy="10" r="0.8" fill="#f472b6" opacity="0.85" />
+            <circle cx="16" cy="10" r="0.8" fill="#f472b6" opacity="0.85" />
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <h1 class="text-sm sm:text-base font-bold text-slate-900 leading-tight truncate">三軍總醫院牙科部牙科健保申報代碼查詢</h1>
+          <p class="text-[11px] text-slate-500 mt-0.5">多關鍵字即時檢索 • 代碼/點數/規範快速查核</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="adminBtn" onclick="openAdminModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-medium text-slate-700 transition">
+          <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-600"></i>
+          <span>資料庫更新</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 搜尋欄位 (含搜尋模式下拉選單) -->
+    <div class="max-w-4xl mx-auto mt-2.5 flex flex-col sm:flex-row gap-2">
+      <!-- 搜尋模式下拉選單 -->
+      <div class="relative sm:w-44 shrink-0">
+        <select
+          id="searchModeSelect"
+          onchange="handleSearchModeChange()"
+          class="w-full h-full py-2.5 px-3 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-2xs transition cursor-pointer appearance-none pr-8"
+        >
+          <option value="multi" selected>多關鍵字搜尋</option>
+          <option value="single_code">單一申報碼搜尋</option>
+        </select>
+        <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+      </div>
+
+      <!-- 關鍵字/代碼輸入框 -->
+      <div class="relative flex-1 flex items-center">
+        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none"></i>
+        <input
+          id="searchInput"
+          type="text"
+          placeholder="搜尋代碼、中英文名稱 (例: 92055 乳牙拔除 primary tooth extraction)"
+          class="w-full pl-10 pr-9 py-2.5 bg-slate-100/90 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-xl text-sm transition outline-none"
+        />
+        <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute right-3 text-slate-400 hover:text-slate-600">
+          <i data-lucide="x-circle" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 篩選標籤區 (已完全移除間隔日所有項目) -->
+  <section class="max-w-4xl mx-auto px-4 pt-3 pb-2 space-y-2.5">
+    
+    <!-- <常用項目> (依照 Excel H 欄位分類；多選時須同時成立) -->
+    <div class="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5 text-xs">
+      <span class="text-[11px] font-semibold text-slate-500 whitespace-nowrap pl-0.5 mr-0.5">&lt;常用項目&gt;:</span>
+      <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="洗牙">洗牙</button>
+      <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="補牙">補牙</button>
+      <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="根管">根管</button>
+      <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="拔牙">拔牙</button>
+      <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="急診/外傷">急診/外傷</button>
+      <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="兒牙">兒牙</button>
+      <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="牙統">牙統</button>
+      <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="X光">X光</button>
+      <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="麻醉">麻醉</button>
+    </div>
+
+    <!-- <年齡限制> -->
+    <div class="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5 text-xs">
+      <span class="text-[11px] font-semibold text-slate-500 whitespace-nowrap pl-0.5 mr-0.5">&lt;年齡限制&gt;:</span>
+      <button class="tag-btn age-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="未滿十二歲">未滿十二歲</button>
+      <button class="tag-btn age-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="青少年">青少年</button>
+      <button class="tag-btn age-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="六十五歲以上">六十五歲以上</button>
+    </div>
+
+    <!-- <常用條件> -->
+    <div class="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5 text-xs">
+      <span class="text-[11px] font-semibold text-slate-500 whitespace-nowrap pl-0.5 mr-0.5">&lt;常用條件&gt;:</span>
+      <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="糖尿病">糖尿病</button>
+      <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="高血壓">高血壓</button>
+      <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="心血管疾病">心血管疾病</button>
+      <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="惡性腫瘤">惡性腫瘤</button>
+      <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="癌">癌</button>
+      <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="孕婦">孕婦</button>
+      <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="窩溝封填">窩溝封填</button>
+      <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="口乾症">口乾</button>
+      <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="特殊需求者(特殊醫療服務)">特殊需求者(特殊醫療服務)</button>
+    </div>
+
+    <!-- <其他條件> 下拉式選單 -->
+    <div class="flex items-center gap-2 pt-0.5 text-xs">
+      <span class="text-[11px] font-semibold text-slate-500 whitespace-nowrap pl-0.5">&lt;其他條件&gt;:</span>
+      <select id="otherCondSelect" class="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100">
+        <option value="">全部其他條件 (未指定)</option>
+        <option value="雙磷酸鹽">雙磷酸鹽</option>
+        <option value="抗骨鬆">抗骨鬆</option>
+        <option value="血液透析">血液透析</option>
+        <option value="腹膜透析">腹膜透析</option>
+        <option value="器官移植">器官移植</option>
+        <option value="精神疾病">精神疾病</option>
+        <option value="帕金森氏症">帕金森氏症</option>
+        <option value="失智">失智</option>
+        <option value="甲狀腺">甲狀腺</option>
+        <option value="自體免疫">自體免疫</option>
+        <option value="自閉症">自閉症</option>
+        <option value="洗腎">洗腎</option>
+        <option value="張口困難">張口困難</option>
+        <option value="愛滋病">愛滋病</option>
+        <option value="頭頸部">頭頸部</option>
+      </select>
+      <button id="clearAllFiltersBtn" onclick="resetAllFilters()" class="hidden px-2.5 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-xs font-medium hover:bg-rose-100 whitespace-nowrap transition">
+        清除篩選
+      </button>
+    </div>
+  </section>
+
+  <!-- 查詢結果統計列 -->
+  <div class="max-w-4xl mx-auto px-4 py-1.5 flex items-center justify-between text-xs text-slate-500">
+    <div id="resultCount">共 326 筆項目</div>
+    <div class="text-[11px] text-slate-400">點擊代碼即可快速複製</div>
+  </div>
+
+  <!-- 代碼清單容器 -->
+  <main class="max-w-4xl mx-auto px-4 space-y-2.5" id="codeListContainer"></main>
+
+  <!-- 無結果提示 -->
+  <div id="noResult" class="hidden text-center py-16 px-4">
+    <i data-lucide="search-x" class="w-12 h-12 text-slate-300 mx-auto mb-2"></i>
+    <p class="text-slate-500 text-sm font-medium">找不到符合條件的申報代碼</p>
+    <p class="text-xs text-slate-400 mt-1">請嘗試減少關鍵字或重設篩選條件</p>
+    <button onclick="resetAllFilters()" class="mt-3 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-medium hover:bg-blue-100 transition">重設所有篩選</button>
+  </div>
+
+  <!-- 浮動置底卡片：申報間隔基準日即時推算 (60天前、90天前、180天前、360天前，共四格，無多餘說明) -->
+  <div class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg z-30 transition-all duration-300">
+    <div onclick="toggleIntervalPanel()" class="max-w-4xl mx-auto px-4 py-1.5 flex items-center justify-between cursor-pointer border-b border-slate-100 bg-slate-50/70 select-none">
+      <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
+        <i data-lucide="calendar" class="w-3.5 h-3.5 text-blue-600"></i>
+        <span>申報間隔基準日即時推算</span>
+        <span id="targetDateDisplay" class="text-[11px] font-normal text-slate-500 ml-1"></span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-[10px] text-blue-600 font-medium">切換收合</span>
+        <i id="panelChevron" data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transform transition-transform"></i>
+      </div>
+    </div>
+
+    <!-- 試算區內容 -->
+    <div id="intervalContent" class="max-w-4xl mx-auto px-4 py-2.5">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="text-xs font-medium text-slate-600 whitespace-nowrap">今日看診日期:</span>
+        <input
+          type="date"
+          id="baseDatePicker"
+          class="bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 font-medium outline-none focus:border-blue-500"
+        />
+        <button onclick="setBaseDateToday()" class="text-[11px] px-2 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition font-medium">設為今日</button>
+      </div>
+
+      <!-- 四格基準日卡片 (60天前、90天前、180天前、360天前，底下無說明) -->
+      <div class="grid grid-cols-4 gap-2 text-center">
+        <!-- 60天前基準日 -->
+        <div class="bg-amber-50/80 border border-amber-200/70 rounded-xl py-2 px-1">
+          <div class="text-[11px] font-semibold text-amber-800 leading-tight">60天前</div>
+          <div id="date60" class="text-xs sm:text-sm font-bold text-amber-950 mt-1 tracking-tight">--</div>
+        </div>
+
+        <!-- 90天前基準日 -->
+        <div class="bg-blue-50/80 border border-blue-200/70 rounded-xl py-2 px-1">
+          <div class="text-[11px] font-semibold text-blue-800 leading-tight">90天前</div>
+          <div id="date90" class="text-xs sm:text-sm font-bold text-blue-950 mt-1 tracking-tight">--</div>
+        </div>
+
+        <!-- 180天前基準日 -->
+        <div class="bg-emerald-50/80 border border-emerald-200/70 rounded-xl py-2 px-1">
+          <div class="text-[11px] font-semibold text-emerald-800 leading-tight">180天前</div>
+          <div id="date180" class="text-xs sm:text-sm font-bold text-emerald-950 mt-1 tracking-tight">--</div>
+        </div>
+
+        <!-- 360天前基準日 -->
+        <div class="bg-purple-50/80 border border-purple-200/70 rounded-xl py-2 px-1">
+          <div class="text-[11px] font-semibold text-purple-800 leading-tight">360天前</div>
+          <div id="date360" class="text-xs sm:text-sm font-bold text-purple-950 mt-1 tracking-tight">--</div>
+        </div>
+      </div>
+
+      <!-- 底部標示 -->
+      <div class="flex items-center justify-end text-[10px] text-slate-400 mt-2 pt-1 border-t border-slate-100">
+        <div>三軍總醫院牙科部</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 彈出視窗：後台匯入 Excel (需要密碼 ZXC1234) -->
+  <div id="adminModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="shield-check" class="w-5 h-5 text-emerald-600"></i>
+          <h2 class="text-base font-bold text-slate-900">資料庫更新 (管理驗證)</h2>
+        </div>
+        <button onclick="closeAdminModal()" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- 密碼輸入區 -->
+      <div id="passwordSection" class="space-y-3">
+        <p class="text-xs text-slate-600">
+          更新後台資料庫需要輸入管理員密碼：
+        </p>
+        <div class="flex items-center gap-2">
+          <input
+            type="password"
+            id="adminPasswordInput"
+            placeholder="請輸入密碼"
+            class="flex-1 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 outline-none focus:border-blue-500"
+          />
+          <button onclick="verifyPassword()" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition">
+            驗證密碼
+          </button>
+        </div>
+        <p id="passwordError" class="hidden text-[11px] text-rose-500 font-medium">密碼錯誤，請重新輸入！</p>
+      </div>
+
+      <!-- 上傳區 (密碼正確後顯示) -->
+      <div id="uploadSection" class="hidden space-y-3">
+        <div class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700 text-xs flex items-center gap-2">
+          <i data-lucide="check-circle" class="w-4 h-4 text-emerald-600"></i>
+          <span>驗證成功！請選取或拖曳新的 Excel 檔案</span>
+        </div>
+
+        <div class="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-xl p-5 text-center transition bg-slate-50/50">
+          <i data-lucide="upload-cloud" class="w-8 h-8 text-blue-500 mx-auto mb-2"></i>
+          <p class="text-xs font-medium text-slate-700">點擊選取或拖曳 Excel 檔案至此</p>
+          <p class="text-[11px] text-slate-400 mt-1">支援 .xlsx, .xls, .csv</p>
+          <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleExcelUpload(event)" />
+          <button onclick="document.getElementById('excelFileInput').click()" class="mt-3 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium shadow-xs transition">
+            選取檔案
+          </button>
+        </div>
+
+        <div class="pt-1 flex items-center justify-between">
+          <button onclick="restoreDefaultData()" class="text-xs text-rose-600 hover:underline">還原為預設最新資料庫</button>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end pt-2 border-t border-slate-100">
+        <button onclick="closeAdminModal()" class="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-medium text-slate-700 transition">取消關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 提示 Toast -->
+  <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-900/90 text-white px-4 py-2 rounded-xl text-xs font-medium shadow-lg pointer-events-none opacity-0 transition-opacity duration-300 z-50 flex items-center gap-1.5">
+    <i data-lucide="check" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toastMsg">已複製到剪貼簿</span>
+  </div>
+
+  <script>
+    // 預設資料：全量 326 項，已依照 H欄常用項目 與 I欄特殊註記 解析
+    const DEFAULT_DATA = [{"c": "00121C", "clean_c": "00121C", "n": "牙科門診診察費1.每位醫師每日門診量在二十人次以下部分(≦20) 1)處方交付特約藥局調劑", "en": "", "p": 230, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.處方交付特約藥局調劑或未開處方者，不得申報藥事服務費。2.處方由本院所自行調劑者，得另申報門診藥事服務費。3.偏遠地區因所在地無特約藥局，交付慢性病連續處方箋至其他特約醫院或衛生所調劑，得比照處方箋交付特約藥局調劑申報。4.本項支付點數含護理費29-39點。"}, {"c": "00122C", "clean_c": "00122C", "n": "牙科門診診察費1.每位醫師每日門診量在二十人次以下部分(≦20) 2)未開處方或處方由本院所自行調劑", "en": "", "p": 230, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.處方交付特約藥局調劑或未開處方者，不得申報藥事服務費。2.處方由本院所自行調劑者，得另申報門診藥事服務費。3.偏遠地區因所在地無特約藥局，交付慢性病連續處方箋至其他特約醫院或衛生所調劑，得比照處方箋交付特約藥局調劑申報。4.本項支付點數含護理費29-39點。"}, {"c": "00123C", "clean_c": "00123C", "n": "牙科門診診察費2.每位醫師每日門診量超過二十人次部分(>20) 1)處方交付特約藥局調劑", "en": "", "p": 120, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.處方交付特約藥局調劑或未開處方者，不得申報藥事服務費。2.處方由本院所自行調劑者，得另申報門診藥事服務費。3.偏遠地區因所在地無特約藥局，交付慢性病連續處方箋至其他特約醫院或衛生所調劑，得比照處方箋交付特約藥局調劑申報。4.本項支付點數含護理費29-39點。"}, {"c": "00124C", "clean_c": "00124C", "n": "牙科門診診察費2.每位醫師每日門診量超過二十人次部分(>20) 2)未開處方或處方由本院所自行調劑", "en": "", "p": 120, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.處方交付特約藥局調劑或未開處方者，不得申報藥事服務費。2.處方由本院所自行調劑者，得另申報門診藥事服務費。3.偏遠地區因所在地無特約藥局，交付慢性病連續處方箋至其他特約醫院或衛生所調劑，得比照處方箋交付特約藥局調劑申報。4.本項支付點數含護理費29-39點。"}, {"c": "00125C", "clean_c": "00125C", "n": "牙科門診診察費3.山地離島地區 1)處方交付特約藥局調劑", "en": "", "p": 260, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.處方交付特約藥局調劑或未開處方者，不得申報藥事服務費。2.處方由本院所自行調劑者，得另申報門診藥事服務費。3.偏遠地區因所在地無特約藥局，交付慢性病連續處方箋至其他特約醫院或衛生所調劑，得比照處方箋交付特約藥局調劑申報。4.本項支付點數含護理費29-39點。"}, {"c": "00126C", "clean_c": "00126C", "n": "牙科門診診察費3.山地離島地區 2)未開處方或處方由本院所自行調劑", "en": "", "p": 260, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.處方交付特約藥局調劑或未開處方者，不得申報藥事服務費。2.處方由本院所自行調劑者，得另申報門診藥事服務費。3.偏遠地區因所在地無特約藥局，交付慢性病連續處方箋至其他特約醫院或衛生所調劑，得比照處方箋交付特約藥局調劑申報。4.本項支付點數含護理費29-39點。"}, {"c": "00128C", "clean_c": "00128C", "n": "自閉症、失智症及重度以上特定身心障礙(非精神疾病)者診察費", "en": "", "p": 520, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": ["精神疾病", "失智", "自閉症"], "sn": "", "nt": "限全民健康保險牙醫門診總額特殊醫療服務計畫適用對象之牙醫醫療服務申報。"}, {"c": "00301C", "clean_c": "00301C", "n": "中度特定身心障礙(非精神疾病)者診察費", "en": "", "p": 420, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": ["精神疾病"], "sn": "", "nt": "註：限全民健康保險牙醫門診總額特殊醫療服務計畫適用對象之牙醫醫療服務申報。"}, {"c": "00302C", "clean_c": "00302C", "n": "中度以上精神疾病病人診察費", "en": "", "p": 320, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": ["精神疾病"], "sn": "", "nt": "1.限「全民健康保險牙醫門診總額特殊醫療服務計畫」適用對象之牙醫醫療服務申報。2.限精神病及精神分裂之病人。"}, {"c": "00303C", "clean_c": "00303C", "n": "輕度特定身心障礙者(非精神疾病)及失能老人診察費", "en": "", "p": 320, "cats": [], "ages": ["六十五歲以上"], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": ["精神疾病"], "sn": "", "nt": "註：限全民健康保險牙醫門診總額特殊醫療服務計畫適用對象之牙醫醫療服務申報。"}, {"c": "00304C", "clean_c": "00304C", "n": "身心障礙者轉出醫療院所至特殊醫療服務計畫院所之轉診費用", "en": "", "p": 200, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "註：1.交付病人牙醫醫療院所轉診單，且病歷應記載。2.提供病人或家屬相關諮詢及轉出病歷摘要(不包含X光片)。"}, {"c": "00305C", "clean_c": "00305C", "n": "符合牙醫門診加強感染管制實施方案之牙科門診診察費1.每位醫師每日門診量在二十人次以下部份（≦20）－處方交付特約藥局調劑", "en": "", "p": 362, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.處方交付特約藥局調劑或未開處方者，不得申報藥事服務費。2.處方由本院所自行調劑者，得另申報門診藥事服務費。3.偏遠地區因所在地無特約藥局，交付慢性病連續處方箋至其他特約醫院或衛生所調劑，得比照處方箋交付特約藥局調劑。4.本項支付點數含護理費32點至43點。"}, {"c": "00306C", "clean_c": "00306C", "n": "符合牙醫門診加強感染管制實施方案之牙科門診診察費1.每位醫師每日門診量在二十人次以下部份（≦20）－未開處方或處方由本院所自行調劑", "en": "", "p": 362, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.處方交付特約藥局調劑或未開處方者，不得申報藥事服務費。2.處方由本院所自行調劑者，得另申報門診藥事服務費。3.偏遠地區因所在地無特約藥局，交付慢性病連續處方箋至其他特約醫院或衛生所調劑，得比照處方箋交付特約藥局調劑。4.本項支付點數含護理費32點至43點。"}, {"c": "00307C", "clean_c": "00307C", "n": "符合牙醫門診加強感染管制實施方案之牙科門診診察費2.每位醫師每日門診量超過二十人次部分(＞20)－處方交付特約藥局調劑", "en": "", "p": 162, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.處方交付特約藥局調劑或未開處方者，不得申報藥事服務費。2.處方由本院所自行調劑者，得另申報門診藥事服務費。3.偏遠地區因所在地無特約藥局，交付慢性病連續處方箋至其他特約醫院或衛生所調劑，得比照處方箋交付特約藥局調劑。4.本項支付點數含護理費32點至43點。"}, {"c": "00308C", "clean_c": "00308C", "n": "符合牙醫門診加強感染管制實施方案之牙科門診診察費2.每位醫師每日門診量超過二十人次部分(＞20)－未開處方或處方由本院所自行調劑", "en": "", "p": 162, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.處方交付特約藥局調劑或未開處方者，不得申報藥事服務費。2.處方由本院所自行調劑者，得另申報門診藥事服務費。3.偏遠地區因所在地無特約藥局，交付慢性病連續處方箋至其他特約醫院或衛生所調劑，得比照處方箋交付特約藥局調劑。4.本項支付點數含護理費32點至43點。"}, {"c": "00309C", "clean_c": "00309C", "n": "符合牙醫門診加強感染管制實施方案之牙科門診診察費3.山地離島地區（包含「全民健康保險牙醫門診總額醫療資源不足地區改善方案」山地離島地區之門診及巡迴案件）－處方交付特約藥局調劑", "en": "", "p": 392, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.處方交付特約藥局調劑或未開處方者，不得申報藥事服務費。2.處方由本院所自行調劑者，得另申報門診藥事服務費。3.偏遠地區因所在地無特約藥局，交付慢性病連續處方箋至其他特約醫院或衛生所調劑，得比照處方箋交付特約藥局調劑。4.本項支付點數含護理費32點至43點。"}, {"c": "00310C", "clean_c": "00310C", "n": "符合牙醫門診加強感染管制實施方案之牙科門診診察費3.山地離島地區（包含「全民健康保險牙醫門診總額醫療資源不足地區改善方案」山地離島地區之門診及巡迴案件）－未開處方或處方由本院所自行調劑", "en": "", "p": 392, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.處方交付特約藥局調劑或未開處方者，不得申報藥事服務費。2.處方由本院所自行調劑者，得另申報門診藥事服務費。3.偏遠地區因所在地無特約藥局，交付慢性病連續處方箋至其他特約醫院或衛生所調劑，得比照處方箋交付特約藥局調劑。4.本項支付點數含護理費32點至43點。"}, {"c": "00311C", "clean_c": "00311C", "n": "符合牙醫門診加強感染管制實施方案之重度特定身心障礙(非精神疾病)者診察費", "en": "", "p": 662, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": ["精神疾病"], "sn": "", "nt": "限「全民健康保險牙醫門診總額特殊醫療服務計畫」適用對象之牙醫醫療服務申報。"}, {"c": "00312C", "clean_c": "00312C", "n": "符合牙醫門診加強感染管制實施方案之中度特定身心障礙(非精神疾病)者診察費", "en": "", "p": 562, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": ["精神疾病"], "sn": "", "nt": "註：限「全民健康保險牙醫門診總額特殊醫療服務計畫」適用對象之牙醫醫療服務申報。"}, {"c": "00313C", "clean_c": "00313C", "n": "符合牙醫門診加強感染管制實施方案之中度以上精神疾病病人診察費", "en": "", "p": 462, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": ["精神疾病"], "sn": "", "nt": "1.限「全民健康保險牙醫門診總額特殊醫療服務計畫」適用對象之牙醫醫療服務申報。2.限精神疾病及思覺失調症之病人。"}, {"c": "00314C", "clean_c": "00314C", "n": "符合牙醫門診加強感染管制實施方案之輕度特定身心障礙者(非精神疾病)及失能老人診察費", "en": "", "p": 462, "cats": [], "ages": ["六十五歲以上"], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": ["精神疾病"], "sn": "", "nt": "限「全民健康保險牙醫門診總額特殊醫療服務計畫」適用對象之牙醫醫療服務申報。"}, {"c": "00315C", "clean_c": "00315C", "n": "符合牙醫門診加強感染管制實施方案之環口全景X光片診察", "en": "", "p": 642, "cats": ["X光"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.係指病人在該院所從未執行本項診察或01271C，或三年以上未就診，且該病人基於醫師之專業判斷，有施行環口全景X光片診察之需要，醫師得於主訴處理完畢後擇適當時機執行。2.申報時應檢附Panoramic radiography環口全景X光片攝影。3.同次診察內含34001C至34004C之X光費用，不得另行申報。4.病歷中除應記載缺牙部位、牙冠牙橋與阻生齒外，應記載X光片呈現之診斷與發現。5.本項與01271C三年內限擇一申報一次，申報本項一年內不得申報01272C、01273C、00316C、00317C。"}, {"c": "00316C", "clean_c": "00316C", "n": "符合牙醫門診加強感染管制實施方案之年度X光片診察", "en": "", "p": 642, "cats": ["X光"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.係指病人間隔一年以上未就診或二年以上未執行本項，且經醫師專業判斷疑有鄰接面齲齒或疑似牙周炎者，醫師得於主訴處理完畢後擇適當時機執行。2.申報時應檢附雙側咬翼片Bite-Wing(後牙) 及至少二張根尖周X光攝影(前牙)或至少四張根尖周X光片（不同部位，後牙優先）。3.同次診察內含34001C至34004C之X光費用，不得另行申報。4.病歷中除應記載缺牙部位、牙冠牙橋與阻生齒以及鄰接面齲齒齒位及部位外，應記載X光片呈現之診斷與發現。5.申報本項一年內不得申報01271C、01272C、01273C、00315C、00317C。"}, {"c": "00317C", "clean_c": "00317C", "n": "符合牙醫門診加強感染管制實施方案之高齲齒罹患率族群年度X光片診察", "en": "", "p": 642, "cats": ["X光"], "ages": [], "common_conds": ["糖尿病", "心血管疾病"], "other_conds": ["自體免疫", "洗腎"], "sn": "", "nt": "1.適應症係指一年以上未執行本項，且符合高齲齒罹患率的族群者，經醫師專業判斷有執行X光片診察需要者，醫師可於病人之主訴處理完畢後擇適當時機執行。2.申報時應檢附雙側咬翼片Bite-Wing（後牙）及至少二張根尖周X光攝影（前牙）。3.高齲齒罹患率的族群為：(1)化療、放射線治療病人。(2)中風病人。(3)自體免疫疾病病人。(4)糖尿病病人。(5)心血管疾病病人。(6)巴金氏症Parkinson's disease。(7)透析治療(洗腎)病人。(8)經醫師專業判斷為高齲齒罹患率族群者。（須詳細註明原因）4.同次診察內含34001C至34004C之X光費用，不得另行申報。5.病歷中除應記載缺牙部位、牙冠牙橋與阻生齒以及鄰接面齲齒齒位及部位外，應記載X光片呈現之診斷與發現。6.申報本項一年內不得申報01271C、01272C、01273C、00315C、00316C。"}, {"c": "00318C", "clean_c": "00318C", "n": "符合牙醫門診加強感染管制實施方案之自閉症、失智症及極重度特定身心障礙(非精神疾病)者診察費", "en": "", "p": 762, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": ["精神疾病", "失智", "自閉症"], "sn": "", "nt": "限「全民健康保險牙醫門診總額特殊醫療服務計畫」適用對象之牙醫醫療服務申報。"}, {"c": "01271C", "clean_c": "01271C", "n": "環口全景X光片診察", "en": "", "p": 600, "cats": ["X光"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.係指病人在該院所從未執行本項診察或00315C，或三年以上未就診，且該病人基於醫師之專業判斷，有施行環口全景X光片診察之需要，醫師得於主訴處理完畢後擇適當時機執行。2.申報時應檢附Panoramic radiography環口全景X光片攝影。3.同次診察內含34001C至34004C之X光費用，不得另行申報。4.病歷中除應記載缺牙部位、牙冠牙橋與阻生齒外，應記載X光片呈現之診斷與發現。5.本項與00315C三年內限擇一申報一次，申報本項一年內不得申報01272C、01273C、00316C、00317C。"}, {"c": "01272C", "clean_c": "01272C", "n": "年度X光片診察", "en": "", "p": 600, "cats": ["X光"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.係指病人間隔一年以上未就診或二年以上未執行本項，且經醫師專業判斷疑有鄰接面齲齒或疑似牙周炎者，醫師得於主訴處理完畢後擇適當時機執行。2.申報時應檢附雙側咬翼片Bite-Wing(後牙)及至少二張根尖周X光攝影(前牙)或至少四張根尖周X光片（不同部位，後牙優先）。3.同次診察內含34001C至34004C之X光費用，不得另行申報。4.病歷中除應記載缺牙部位、牙冠牙橋與阻生齒以及鄰接面齲齒齒位及部位外，應記載X光片呈現之診斷與發現。5.申報本項一年內不得申報01271C、01273C、00315C、00316C、00317C。"}, {"c": "01273C", "clean_c": "01273C", "n": "高齲齒罹患率族群年度X光片診察", "en": "", "p": 600, "cats": ["X光"], "ages": [], "common_conds": ["糖尿病", "心血管疾病"], "other_conds": ["自體免疫", "洗腎"], "sn": "", "nt": "1.適應症係指一年以上未執行本項，且符合高齲齒罹患率的族群者，經醫師專業判斷有執行X光片診察需要者，醫師可於病人之主訴處理完畢後擇適當時機執行。2.申報時應檢附雙側咬翼片Bite-Wing（後牙）及至少二張根尖周X光攝影（前牙）。3.高齲齒罹患率的族群為：(1)化療、放射線治療病人。(2)中風病人。(3)自體免疫疾病病人。(4)糖尿病病人。(5)心血管疾病病人。(6)巴金氏症Parkinson's disease。(7)透析治療(洗腎)病人。(8)經醫師專業判斷為高齲齒罹患率族群者。（須詳細註明原因）4.同次診察內含34001C至34004C之X光費用，不得另行申報。5.病歷中除應記載缺牙部位、牙冠牙橋與阻生齒以及鄰接面齲齒齒位及部位外，應記載X光片呈現之診斷與發現。6.申報本項一年內不得申報01271C、01272C、00315C、00316C、00317C。"}, {"c": "25003C", "clean_c": "25003C", "n": "第三級外科病理", "en": "Surgical pathology Level III", "p": 1014, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "人工流產、膿瘍、動脈瘤、肛門息肉、闌尾炎、粥狀動脈硬化、Bartholin氏囊腫、非病理性骨折之骨碎片、關節囊腫、腕部隧道症、軟骨刮削、膽脂瘤、結腸造口術、結膜切片/翼狀胔肉、雞眼、角膜、食道及小腸憩室病、Dupuytren's contracture、股骨頭(非骨折性)、纖維脂肪瘤、廔管、包皮(包皮炎，尖狀濕疣)、膽囊、腱鞘囊腫、血腫、痔瘡、Morgagni囊、椎間盤突出、關節游離體、關節半月板、黏液囊腫、外傷性神經瘤、藏毛廔管、鼻腔及鼻竇發炎性息肉、皮膚囊腫/皮膚息肉/皮膚清創術、軟組織清創術、脂肪瘤、精液囊腫、肌腱、睪丸附屬器官、血栓、口腔及鼻咽扁桃腺或腺樣組織、精索靜脈曲張、靜脈曲張、輸精管(非結紮)。"}, {"c": "25004C", "clean_c": "25004C", "n": "第四級外科病理", "en": "Surgical pathology Level IV", "p": 1741, "cats": [], "ages": [], "common_conds": ["孕婦"], "other_conds": ["甲狀腺"], "sn": "", "nt": "自然流產、動脈切片、骨髓切片、外生骨疣、腦/腦膜(非腫瘤)、乳房切片(不需margin)如fibrocystic change、乳房縮小整形術、支氣管切片、子宮頸切片、結腸切片、十二指腸切片、子宮頸/子宮內膜息肉、結腸直腸息肉切除、尖性濕疣、皮纖維瘤、子宮內頸刮除術/切片、子宮內膜刮除術/切片、食道切片、創傷性之肢體截肢、輸卵管切片、股骨頭骨折、非創傷性之指頭截肢、牙齦/口腔黏膜切片、心臟瓣膜、血管瘤、皮內痣、關節切除置換、瘢瘤、腎臟切片、喉部切片、子宮肌瘤切除術、唇切片、經支氣管肺切片、淋巴結切片、肌肉切片、鼻黏膜切片、鼻咽或口咽切片、神經切片、牙源性囊腫、網膜切片、卵巢切除(非腫瘤)、卵巢切片、鼻竇切片、副甲狀腺切除、腹膜切片、腦下垂體腫瘤、胎盤(非懷孕後三個月)、肋膜/心包膜切片、子宮脫垂(有或無輸卵管及卵巢)、前列腺細針切片、攝護腺刮除、唾液腺切片、皮脂漏性角化病、皮膚-(非囊腫/非息肉/非清創/非整形標本)、小腸切片、軟組織-(非腫瘤/非脂肪瘤/非清創標本)、脾臟、胃切片、胃/小腸息肉切除、滑液膜、睪丸-(非腫瘤/非切片/非閹割)、甲狀腺舌管鰓裂囊腫、舌切片、扁桃腺切片、氣管切片、毛髮上皮瘤、輸卵管異位懷孕、輸尿管切片、尿道切片、膀胱切片、陰道切片、尋常疣、會陰切片。"}, {"c": "34001C", "clean_c": "34001C", "n": "根尖周 X光攝影", "en": "Periapical radiography", "p": 80, "cats": ["X光"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "同一月份費用已內含X光片的支付項目，不得另外重覆申報。"}, {"c": "34002C", "clean_c": "34002C", "n": "咬翼式 X光攝影", "en": "Bite-Wing radiography", "p": 100, "cats": ["X光"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "同一月份費用已內含X光片費用，不得重複申報。"}, {"c": "34003C", "clean_c": "34003C", "n": "咬合片 X光攝影", "en": "Occlusal radiography", "p": 120, "cats": ["X光"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "34004C", "clean_c": "34004C", "n": "齒顎全景 X光片攝影", "en": "Panoramic radiography", "p": 600, "cats": ["X光"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.每人限給付一張(含跨院所)，特殊傷病狀況不在此限。2.病歷應詳載符合特殊狀況之拍攝理由。"}, {"c": "34005B", "clean_c": "34005B", "n": "測顱 X光攝影", "en": "Cephalometric radiography", "p": 650, "cats": ["X光"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "34006B", "clean_c": "34006B", "n": "顳顎關節 X光攝影（單側）", "en": "T.M.J. radiography, unilateral", "p": 700, "cats": ["X光"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "包括開口及閉口相。"}, {"c": "48022C", "clean_c": "48022C", "n": "臉部創傷處理– 小 小於五公分", "en": "Treatment of facial laceration- < 5cm", "p": 1566, "cats": ["急診/外傷"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.縫合傷口包括皮膚及皮下。2.含縫合、接紮、擴創處理。"}, {"c": "48023C", "clean_c": "48023C", "n": "臉部創傷處理– 中 五公分至十公分", "en": "Treatment of facial laceration- 5-10 cm", "p": 2515, "cats": ["急診/外傷"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.縫合傷口包括皮膚及皮下。2.含縫合、接紮、擴創處理。"}, {"c": "48024C", "clean_c": "48024C", "n": "臉部創傷處理– 大 超過十公分", "en": "Treatment of facial laceration-  >10cm", "p": 3249, "cats": ["急診/外傷"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.縫合傷口包括皮膚及皮下。2.含縫合、接紮、擴創處理。"}, {"c": "48025C", "clean_c": "48025C", "n": "拆線(次)－ 傷口小於十公分", "en": "Remove Stiches - <10cm", "p": 97, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "48026C", "clean_c": "48026C", "n": "拆線(次)－ 傷口十公分以上", "en": "Remove Stiches - >10cm", "p": 303, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "48028P", "clean_c": "48028P", "n": "深部複雜、臉部創傷之第二次處理", "en": "2nd Debridement、Treatment of facial laceration", "p": 496, "cats": ["急診/外傷"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.含縫合，接紮，擴創處理2.本項限第二次處理申報，至於後續療程(第三次及以後就醫)之複診患者請依48011C-48013C申報3.限向衛生局登記為診所(不含中醫診所及牙醫診所)之特約醫事服務機構申報."}, {"c": "48033C", "clean_c": "48033C", "n": "深部複雜臉部創傷處理– 小 小於五公分", "en": "Deep complicated facial wound debridement - < 5cm", "p": 2445, "cats": ["急診/外傷"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.縫合傷口包含皮膚、皮下、肌膜及肌肉層。2.含縫合、接紮、擴創處理。"}, {"c": "48034C", "clean_c": "48034C", "n": "深部複雜臉部創傷處理– 中 五公分至十公分", "en": "Deep complicated facial wound debridement - 5-10 cm", "p": 3534, "cats": ["急診/外傷"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.縫合傷口包含皮膚、皮下、肌膜及肌肉層。2.含縫合、接紮、擴創處理。"}, {"c": "48035C", "clean_c": "48035C", "n": "深部複雜臉部創傷處理– 大 超過十公分", "en": "Deep complicated facial wound debridement - >10cm", "p": 4101, "cats": ["急診/外傷"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.縫合傷口包含皮膚、皮下、 肌膜及肌肉層。2.含縫合、接紮、擴創處理。"}, {"c": "89", "clean_c": "89", "n": "兒童牙齒塗氟-社區巡迴服務氟化防齲處理(服務項目詳附註)", "en": "", "p": 600, "cats": [], "ages": ["未滿十二歲"], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "包括牙醫師專業塗氟處理、一般性口腔檢查、衛生教育。補助時程：未滿十二歲之低收入戶、身心障礙、原住民族地區、偏遠及離島地區，每三個月補助一次。※111年7月22日衛生福利部衛部口字第11120610158A號公告自111年9月1日起生效「醫事服務機構辦理口腔預防保健服務注意事項」部分規定修正。"}, {"c": "89001C", "clean_c": "89001C", "n": "銀粉充填 － 單面", "en": "Amalgam restoration-single surface", "p": 450, "cats": ["補牙"], "ages": ["未滿十二歲"], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.同顆牙申報銀粉充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填（89001C～89005C，89008C～89012C，89014C～89015C）費用，以同一院所為限。2.應於病歷詳列充填牙面部位。3.申報面數最高以三面為限。"}, {"c": "89002C", "clean_c": "89002C", "n": "銀粉充填 － 雙面", "en": "Amalgam restoration - two surfaces", "p": 600, "cats": ["補牙"], "ages": ["未滿十二歲"], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.同顆牙申報銀粉充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填（89001C～89005C，89008C～89012C，89014C～89015C）費用，以同一院所為限。2.應於病歷詳列充填牙面部位。3.申報面數最高以三面為限。"}, {"c": "89003C", "clean_c": "89003C", "n": "銀粉充填 － 三面", "en": "Amalgam restoration - three surfaces", "p": 750, "cats": ["補牙"], "ages": ["未滿十二歲"], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.同顆牙申報銀粉充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填（89001C～89005C，89008C～89012C，89014C～89015C）費用，以同一院所為限。2.應於病歷詳列充填牙面部位。3.申報面數最高以三面為限。"}, {"c": "89004C", "clean_c": "89004C", "n": "前牙複合樹脂充填-單面", "en": "Composite resin restoration in anterior teeth-single surface", "p": 500, "cats": ["補牙"], "ages": ["未滿十二歲"], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.同顆牙申報前牙複合樹脂充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填(89001C～89005C，89008C～89012C，89014C～89015C）費用，以同一院所為限。2.應於病歷詳列充填牙面部位。3.申報面數最高以二面為限。"}, {"c": "89005C", "clean_c": "89005C", "n": "前牙複合樹脂充填-雙面", "en": "Composite resin restoration in anterior teeth-two surfaces", "p": 650, "cats": ["補牙"], "ages": ["未滿十二歲"], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.同顆牙申報前牙複合樹脂充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填(89001C～89005C，89008C～89012C，89014C～89015C）費用，以同一院所為限。2.應於病歷詳列充填牙面部位。3.申報面數最高以二面為限。"}, {"c": "89006C", "clean_c": "89006C", "n": "覆髓", "en": "Pulp capping", "p": 140, "cats": ["根管"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.包括暫時填充。2.每顆牙、每半年限申請一次。3.再做永久充填時需間隔30天 (若經根管治療後不在此限)。4.僅限恆牙。5.此項不得申請轉診加成。"}, {"c": "89007C", "clean_c": "89007C", "n": "釘強化術（每支）", "en": "Use of pin, each", "p": 500, "cats": ["補牙"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.需檢附術後X光片與填補合併申報。2.僅限恆牙。"}, {"c": "89008C", "clean_c": "89008C", "n": "後牙複合樹脂充填-單面", "en": "Composite resin restoration in posterior teeth-single surface", "p": 600, "cats": ["補牙"], "ages": ["未滿十二歲"], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.同顆牙申報複合樹脂充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填(89001C～89005C，89008C～89012C，89014C～89015C）費用，以同一院所為限。2.應於病歷詳列充填牙面部位。3.申報面數最高以三面為限。"}, {"c": "89009C", "clean_c": "89009C", "n": "後牙複合樹脂充填-雙面", "en": "Composite resin restoration in posterior teeth-two surfaces", "p": 800, "cats": ["補牙"], "ages": ["未滿十二歲"], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.同顆牙申報複合樹脂充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填(89001C～89005C，89008C～89012C，89014C～89015C）費用，以同一院所為限。2.應於病歷詳列充填牙面部位。3.申報面數最高以三面為限。"}, {"c": "89010C", "clean_c": "89010C", "n": "後牙複合樹脂充填-三面", "en": "Composite resin restoration in posterior teeth-three surfaces", "p": 1000, "cats": ["補牙"], "ages": ["未滿十二歲"], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.同顆牙申報複合樹脂充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填(89001C～89005C，89008C～89012C，89014C～89015C）費用，以同一院所為限。2.應於病歷詳列充填牙面部位。3.申報面數最高以三面為限。"}, {"c": "89011C", "clean_c": "89011C", "n": "玻璃離子體充填", "en": "Glass ionomer cement restoration", "p": 400, "cats": ["補牙"], "ages": ["未滿十二歲"], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.同顆牙申報玻璃離子體充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質)之再填補，皆不得再申報充填(89001C～89005C，89008C～89012C，89014C～89015C)費用，以同一院所為限。2.應於病歷詳列充填牙面部位。"}, {"c": "89012C", "clean_c": "89012C", "n": "前牙三面複合樹脂充填", "en": "Three-surface composite resin restoration in anterior teeth", "p": 1050, "cats": ["補牙"], "ages": ["未滿十二歲"], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.同顆牙申報複合樹脂充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填(89001C～89005C，89008C～89012C，89014C～89015C)費用，以同一院所為限。2.應於病歷詳列充填牙面部位。3.申報面數最高以三面為限。"}, {"c": "89013C", "clean_c": "89013C", "n": "複合體充填", "en": "Compomer restoration", "p": 1200, "cats": ["補牙"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.限恆牙牙根齲齒申報。2.每顆牙一年半內不得重複申報，以同一院所為限。3.應於病歷詳列充填牙面部位。"}, {"c": "89014C", "clean_c": "89014C", "n": "前牙雙鄰接面複合樹脂充填", "en": "Composite resin restoration for two proximal (mesial and distal) surfaces in anterior teeth", "p": 1200, "cats": ["補牙"], "ages": ["未滿十二歲"], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.同顆牙申報前牙雙鄰接面複合樹脂充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填(89001C～89005C，89008C～89012C，89014C～89015C)費用，以同一院所為限。2.應於病歷詳列充填牙面部位。"}, {"c": "89015C", "clean_c": "89015C", "n": "後牙雙鄰接面複合樹脂充填", "en": "Composite resin restoration for two proximal (mesial and distal) surfaces in posterior teeth", "p": 1450, "cats": ["補牙"], "ages": ["未滿十二歲"], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.同顆牙申報後牙雙鄰接面複合樹脂充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填(89001C～89005C，89008C～89012C，89014C～89015C)費用，以同一院所為限。2.應於病歷詳列充填牙面部位。3.充填牙面部位應包含雙鄰接面(Mesial, M; Distal, D)及咬合面(Occlusal, O)。"}, {"c": "89088C", "clean_c": "89088C", "n": "牙體復形轉出醫療院所之轉診費用", "en": "Referral fee for dental restoration", "p": 200, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.交付病人牙醫醫療院所轉診單，且病歷應記載。2.提供病人或家屬相關諮詢及轉出病歷摘要(不包含X光片)。3.此項不得申請轉診加成。"}, {"c": "89101C", "clean_c": "89101C", "n": "特殊狀況之銀粉充填 -單面", "en": "Amalgam restoration for patients with special needs-single surface", "p": 450, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.適用於全民健康保險牙醫門診總額特殊醫療服務計畫之適用對象、化療、放射線治療患者之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。3.申報面數最高以三面為限。"}, {"c": "89102C", "clean_c": "89102C", "n": "特殊狀況之銀粉充填 -雙面", "en": "Amalgam restoration for patients with special needs-two surfaces", "p": 600, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.適用於全民健康保險牙醫門診總額特殊醫療服務計畫之適用對象、化療、放射線治療患者之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。3.申報面數最高以三面為限。"}, {"c": "89103C", "clean_c": "89103C", "n": "特殊狀況之銀粉充填 -三面", "en": "Amalgam restoration for patients with special needs-three surfaces", "p": 750, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.適用於全民健康保險牙醫門診總額特殊醫療服務計畫之適用對象、化療、放射線治療患者之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。3.申報面數最高以三面為限。"}, {"c": "89104C", "clean_c": "89104C", "n": "特殊狀況之前牙複合樹脂充填-單面", "en": "Composite resin restoration in anterior teeth for patients with special needs-single surface", "p": 500, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.適用於全民健康保險牙醫門診總額特殊醫療服務計畫之適用對象、化療、放射線治療患者之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。3.申報面數最高以二面為限。"}, {"c": "89105C", "clean_c": "89105C", "n": "特殊狀況之前牙複合樹脂充填-雙面", "en": "Composite resin restoration in anterior teeth for patients with special needs-two surfaces", "p": 650, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.適用於全民健康保險牙醫門診總額特殊醫療服務計畫之適用對象、化療、放射線治療患者之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。3.申報面數最高以二面為限。"}, {"c": "89108C", "clean_c": "89108C", "n": "特殊狀況之後牙複合樹脂充填-單面", "en": "Composite resin restoration in posterior teeth for patients with special needs-single surface", "p": 600, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.適用於全民健康保險牙醫門診總額特殊醫療服務計畫之適用對象、化療、放射線治療患者之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。3.申報面數最高以三面為限。"}, {"c": "89109C", "clean_c": "89109C", "n": "特殊狀況之後牙複合樹脂充填-雙面", "en": "Composite resin restoration in posterior teeth for patients with special needs-two surfaces", "p": 800, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.適用於全民健康保險牙醫門診總額特殊醫療服務計畫之適用對象、化療、放射線治療患者之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。3.申報面數最高以三面為限。"}, {"c": "89110C", "clean_c": "89110C", "n": "特殊狀況之後牙複合樹脂充填-三面", "en": "Composite resin restoration in posterior teeth for patients with special needs-three surfaces", "p": 1000, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.適用於全民健康保險牙醫門診總額特殊醫療服務計畫之適用對象、化療、放射線治療患者之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。3.申報面數最高以三面為限。"}, {"c": "89111C", "clean_c": "89111C", "n": "特殊狀況之玻璃離子體充填", "en": "Glass ionomer cement restoration for patients with special needs", "p": 400, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.適用於全民健康保險牙醫門診總額特殊醫療服務計畫之適用對象、化療、放射線治療患者之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。"}, {"c": "89112C", "clean_c": "89112C", "n": "特殊狀況之前牙三面複合樹脂充填", "en": "Three-surface composite resin restoration in anterior teeth for patients with special needs", "p": 1050, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.適用於全民健康保險牙醫門診總額特殊醫療服務計畫之適用對象、化療、放射線治療患者之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。3.申報面數最高以三面為限。"}, {"c": "89113C", "clean_c": "89113C", "n": "特殊狀況之複合體充填", "en": "Compomer restoration for patients with special needs", "p": 1200, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "註：1.適用於「全民健康保險牙醫門診總額特殊醫療服務計畫」之適用對象、化療、放射線治療病人之牙醫醫療服務申報。2.限恆牙牙根齲齒申報。3.應於病歷詳列充填牙面部位。"}, {"c": "89114C", "clean_c": "89114C", "n": "特殊狀況之前牙雙鄰接面複合樹脂充填", "en": "Composite resin restoration for two proximal (mesial and distal) surfaces in anterior teeth for patients with special needs", "p": 1200, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.適用於「全民健康保險牙醫門診總額特殊醫療服務計畫」之適用對象、化療、放射線治療患者之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。"}, {"c": "89115C", "clean_c": "89115C", "n": "特殊狀況之後牙雙鄰接面複合樹脂充填", "en": "Composite resin restoration for two proximal (mesial and distal) surfaces in posterior teeth for patients with special needs", "p": 1450, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.適用於「全民健康保險牙醫門診總額特殊醫療服務計畫」之適用對象、化療、放射線治療患者之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。3.充填牙面部位應包含雙鄰接面(Mesial, M; Distal, D)及咬合面(Occlusal, O)。"}, {"c": "89204C", "clean_c": "89204C", "n": "高風險疾病病人複雜性前牙複合體充填－單面", "en": "Complex compomer restoration in anterior teeth-single surface", "p": 900, "cats": ["補牙"], "ages": ["未滿十二歲", "六十五歲以上"], "common_conds": ["糖尿病", "心血管疾病", "惡性腫瘤", "特殊需求者(特殊醫療服務)"], "other_conds": ["雙磷酸鹽", "抗骨鬆", "血液透析", "腹膜透析"], "sn": "", "nt": "1.適用對象：須符合下列條件之一者(1)六十五歲以上者。(2)糖尿病病人。 (3)心血管疾病病人。(4)血液透析及腹膜透析病人。(5)使用雙磷酸鹽類或抗骨鬆單株抗體藥物病人。(6)惡性腫瘤病人。(7)非屬「全民健康保險牙醫門診總額特殊醫療服務計畫」院所牙醫醫療服務適用對象之身心障礙類別及障礙等級者。2.同顆牙申報前牙複合體充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填(89001C～89005C，89008C～89012C，89014C～89015C，89204C~89205C，89208C~89210C，89212C，89214C~89215C）費用，以同一院所為限。3.應於病歷詳列充填牙面部位。4.申報面數最高以二面為限。"}, {"c": "89205C", "clean_c": "89205C", "n": "高風險疾病病人複雜性前牙複合體充填－雙面", "en": "Complex compomer restoration in anterior teeth-two surfaces", "p": 1050, "cats": ["補牙"], "ages": ["未滿十二歲", "六十五歲以上"], "common_conds": ["糖尿病", "心血管疾病", "惡性腫瘤", "特殊需求者(特殊醫療服務)"], "other_conds": ["雙磷酸鹽", "抗骨鬆", "血液透析", "腹膜透析"], "sn": "", "nt": "1.適用對象：須符合下列條件之一者(1)六十五歲以上者。(2)糖尿病病人。 (3)心血管疾病病人。(4)血液透析及腹膜透析病人。(5)使用雙磷酸鹽類或抗骨鬆單株抗體藥物病人。(6)惡性腫瘤病人。(7)非屬「全民健康保險牙醫門診總額特殊醫療服務計畫」院所牙醫醫療服務適用對象之身心障礙類別及障礙等級者。2.同顆牙申報前牙複合體充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填(89001C～89005C，89008C～89012C，89014C～89015C，89204C~89205C，89208C~89210C，89212C，89214C~89215C）費用，以同一院所為限。3.應於病歷詳列充填牙面部位。4.申報面數最高以二面為限。"}, {"c": "89208C", "clean_c": "89208C", "n": "高風險疾病病人複雜性後牙複合體充填－單面", "en": "Complex compomer restoration in posterior teeth-single surface", "p": 1000, "cats": ["補牙"], "ages": ["未滿十二歲", "六十五歲以上"], "common_conds": ["糖尿病", "心血管疾病", "惡性腫瘤", "特殊需求者(特殊醫療服務)"], "other_conds": ["雙磷酸鹽", "抗骨鬆", "血液透析", "腹膜透析"], "sn": "", "nt": "1.適用對象：須符合下列條件之一者(1)六十五歲以上者。(2)糖尿病病人。 (3)心血管疾病病人。(4)血液透析及腹膜透析病人。(5)使用雙磷酸鹽類或抗骨鬆單株抗體藥物病人。(6)惡性腫瘤病人。(7)非屬「全民健康保險牙醫門診總額特殊醫療服務計畫」院所牙醫醫療服務適用對象之身心障礙類別及障礙等級者。2.同顆牙申報複合體充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填(89001C～89005C，89008C～89012C，89014C～89015C，89204C~89205C，89208C~89210C，89212C，89214C~89215C）費用，以同一院所為限。3.應於病歷詳列充填牙面部位。4.申報面數最高以三面為限。"}, {"c": "89209C", "clean_c": "89209C", "n": "高風險疾病病人複雜性後牙複合體充填－雙面", "en": "Complex compomer restoration in posterior teeth-two surfaces", "p": 1200, "cats": ["補牙"], "ages": ["未滿十二歲", "六十五歲以上"], "common_conds": ["糖尿病", "心血管疾病", "惡性腫瘤", "特殊需求者(特殊醫療服務)"], "other_conds": ["雙磷酸鹽", "抗骨鬆", "血液透析", "腹膜透析"], "sn": "", "nt": "1.適用對象：須符合下列條件之一者(1)六十五歲以上者。(2)糖尿病病人。 (3)心血管疾病病人。(4)血液透析及腹膜透析病人。(5)使用雙磷酸鹽類或抗骨鬆單株抗體藥物病人。(6)惡性腫瘤病人。(7)非屬「全民健康保險牙醫門診總額特殊醫療服務計畫」院所牙醫醫療服務適用對象之身心障礙類別及障礙等級者。2.同顆牙申報複合體充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填(89001C～89005C，89008C～89012C，89014C～89015C，89204C~89205C，89208C~89210C，89212C，89214C~89215C）費用，以同一院所為限。3.應於病歷詳列充填牙面部位。4.申報面數最高以三面為限。"}, {"c": "89210C", "clean_c": "89210C", "n": "高風險疾病病人複雜性後牙複合體充填－三面", "en": "Complex compomer restoration in posterior teeth-three surfaces", "p": 1400, "cats": ["補牙"], "ages": ["未滿十二歲", "六十五歲以上"], "common_conds": ["糖尿病", "心血管疾病", "惡性腫瘤", "特殊需求者(特殊醫療服務)"], "other_conds": ["雙磷酸鹽", "抗骨鬆", "血液透析", "腹膜透析"], "sn": "", "nt": "1.適用對象：須符合下列條件之一者(1)六十五歲以上者。(2)糖尿病病人。 (3)心血管疾病病人。(4)血液透析及腹膜透析病人。(5)使用雙磷酸鹽類或抗骨鬆單株抗體藥物病人。(6)惡性腫瘤病人。(7)非屬「全民健康保險牙醫門診總額特殊醫療服務計畫」院所牙醫醫療服務適用對象之身心障礙類別及障礙等級者。2.同顆牙申報複合體充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填(89001C～89005C，89008C～89012C，89014C～89015C，89204C~89205C，89208C~89210C，89212C，89214C~89215C）費用，以同一院所為限。3.應於病歷詳列充填牙面部位。4.申報面數最高以三面為限。"}, {"c": "89212C", "clean_c": "89212C", "n": "高風險疾病病人複雜性前牙三面複合體充填", "en": "Complex three-surface compomer restoration in anterior teeth", "p": 1450, "cats": ["補牙"], "ages": ["未滿十二歲", "六十五歲以上"], "common_conds": ["糖尿病", "心血管疾病", "惡性腫瘤", "特殊需求者(特殊醫療服務)"], "other_conds": ["雙磷酸鹽", "抗骨鬆", "血液透析", "腹膜透析"], "sn": "", "nt": "1.適用對象：須符合下列條件之一者(1)六十五歲以上者。(2)糖尿病病人。(3)心血管疾病病人。(4)血液透析及腹膜透析病人。(5)使用雙磷酸鹽類或抗骨鬆單株抗體藥物病人。(6)惡性腫瘤病人。(7)非屬「全民健康保險牙醫門診總額特殊醫療服務計畫」院所牙醫醫療服務適用對象之身心障礙類別及障礙等級者。2.同顆牙申報複合體充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填(89001C～89005C，89008C～89012C，89014C～89015C，89204C~89205C，89208C~89210C，89212C，89214C~89215C）費用，以同一院所為限。3.應於病歷詳列充填牙面部位。4.申報面數最高以三面為限。"}, {"c": "89214C", "clean_c": "89214C", "n": "高風險疾病病人複雜性前牙雙鄰接面複合體充填", "en": "Complex compomer restoration for two proximal (mesial and distal) surfaces in anterior teeth", "p": 1600, "cats": ["補牙"], "ages": ["未滿十二歲", "六十五歲以上"], "common_conds": ["糖尿病", "心血管疾病", "惡性腫瘤", "特殊需求者(特殊醫療服務)"], "other_conds": ["雙磷酸鹽", "抗骨鬆", "血液透析", "腹膜透析"], "sn": "", "nt": "1.適用對象：須符合下列條件之一者(1)六十五歲以上者。 (2)糖尿病病人。(3)心血管疾病病人。(4)血液透析及腹膜透析病人。(5)使用雙磷酸鹽類或抗骨鬆單株抗體藥物病人。(6)惡性腫瘤病人。(7)非屬「全民健康保險牙醫門診總額特殊醫療服務計畫」院所牙醫醫療服務適用對象之身心障礙類別及障礙等級者。2.同顆牙申報前牙雙鄰接面複合體充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填(89001C～89005C，89008C～89012C，89014C～89015C，89204C~89205C，89208C~89210C，89212C，89214C~89215C）費用，以同一院所為限。3.應於病歷詳列充填牙面部位。"}, {"c": "89215C", "clean_c": "89215C", "n": "高風險疾病病人複雜性後牙雙鄰接面複合體充填", "en": "Complex compomer restoration for two proximal (mesial and distal) surfaces in posterior teeth", "p": 1850, "cats": ["補牙"], "ages": ["未滿十二歲", "六十五歲以上"], "common_conds": ["糖尿病", "心血管疾病", "惡性腫瘤", "特殊需求者(特殊醫療服務)"], "other_conds": ["雙磷酸鹽", "抗骨鬆", "血液透析", "腹膜透析"], "sn": "", "nt": "1.適用對象：須符合下列條件之一者(1)六十五歲以上者。(2)糖尿病病人。 (3)心血管疾病病人。(4)血液透析及腹膜透析病人。(5)使用雙磷酸鹽類或抗骨鬆單株抗體藥物病人。(6)惡性腫瘤病人。(7)非屬「全民健康保險牙醫門診總額特殊醫療服務計畫」院所牙醫醫療服務適用對象之身心障礙類別及障礙等級者。2.同顆牙申報後牙雙鄰接面複合體充填，乳牙一年、恆牙一年半內，不論任何原因，所做任何形式（窩洞及材質）之再填補，皆不得再申報充填(89001C～89005C，89008C～89012C，89014C～89015C，89204C~89205C，89208C~89210C，89212C，89214C~89215C）費用，以同一院所為限。3.應於病歷詳列充填牙面部位。4.充填牙面部位應包含雙鄰接面(Mesial, M; Distal, D)及咬合面(Occlusal, O)。"}, {"c": "89304C", "clean_c": "89304C", "n": "特殊狀況之複雜性前牙複合體充填－單面", "en": "Complex compomer restoration in anterior teeth for patients with special needs-single surface", "p": 900, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.限「全民健康保險牙醫門診總額特殊醫療服務計畫」適用對象之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。3.申報面數最高以二面為限。"}, {"c": "89305C", "clean_c": "89305C", "n": "特殊狀況之複雜性前牙複合體充填－雙面", "en": "Complex compomer restoration in anterior teeth for patients with special needs-two surfaces", "p": 1050, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.限「全民健康保險牙醫門診總額特殊醫療服務計畫」適用對象之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。3.申報面數最高以二面為限。"}, {"c": "89308C", "clean_c": "89308C", "n": "特殊狀況之複雜性後牙複合體充填－單面", "en": "Complex compomer restoration in posterior teeth for patients with special needs-single surface", "p": 1000, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.限「全民健康保險牙醫門診總額特殊醫療服務計畫」適用對象之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。3.申報面數最高以三面為限。"}, {"c": "89309C", "clean_c": "89309C", "n": "特殊狀況之複雜性後牙複合體充填－雙面", "en": "Complex compomer restoration in posterior teeth for patients with special needs- two surfaces", "p": 1200, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.限「全民健康保險牙醫門診總額特殊醫療服務計畫」適用對象之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。3.申報面數最高以三面為限。"}, {"c": "89310C", "clean_c": "89310C", "n": "特殊狀況之複雜性後牙複合體充填-三面", "en": "Complex compomer restoration in posterior teeth for patients with special needs-three surfaces", "p": 1400, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.限「全民健康保險牙醫門診總額特殊醫療服務計畫」適用對象之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。3.申報面數最高以三面為限。"}, {"c": "89312C", "clean_c": "89312C", "n": "特殊狀況之複雜性前牙三面複合體充填", "en": "Complex three-surface compomer restoration in anterior teeth for patients with special needs", "p": 1450, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.限「全民健康保險牙醫門診總額特殊醫療服務計畫」適用對象之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。3.申報面數最高以三面為限。"}, {"c": "89314C", "clean_c": "89314C", "n": "特殊狀況之複雜性前牙雙鄰接面複合體充填", "en": "Complex compomer restoration for two proximal (mesial and distal) surfaces in anterior teeth for patients with special needs", "p": 1600, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.限「全民健康保險牙醫門診總額特殊醫療服務計畫」適用對象之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。"}, {"c": "89315C", "clean_c": "89315C", "n": "特殊狀況之複雜性後牙雙鄰接面複合體充填", "en": "Complex compomer restoration for two proximal (mesial and distal) surfaces in posterior teeth for patients with special needs", "p": 1850, "cats": ["補牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.限「全民健康保險牙醫門診總額特殊醫療服務計畫」適用對象之牙醫醫療服務申報。2.應於病歷詳列充填牙面部位。3.充填牙面部位應包含雙鄰接面(Mesial, M; Distal, D)及咬合面(Occlusal, O)。"}, {"c": "8A", "clean_c": "8A", "n": "一、施作牙位：16。二、服務項目：1.恆牙第一大臼齒窩溝封填。2.一般口腔檢查、衛教指導。三、補助對象：1.國小學童(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月) 。2.不含山地原住民鄉、離島地區及身心障礙國小學童。", "en": "", "p": 400, "cats": [], "ages": ["未滿十二歲"], "common_conds": ["窩溝封填", "特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "※111年7月22日衛生福利部衛部口字第11120610158A號公告自111年9月1日起生效「醫事服務機構辦理口腔預防保健服務注意事項」部分規定修正。"}, {"c": "8B", "clean_c": "8B", "n": "一、施作牙位：26。二、服務項目。1.恆牙第一大臼齒窩溝封填。2.一般口腔檢查、衛教指導。三、補助對象。1.國小學童(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月) 。2.不含山地原住民鄉、離島地區及身心障礙國小學童。", "en": "", "p": 400, "cats": [], "ages": ["未滿十二歲"], "common_conds": ["窩溝封填", "特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "※111年7月22日衛生福利部衛部口字第11120610158A號公告自111年9月1日起生效「醫事服務機構辦理口腔預防保健服務注意事項」部分規定修正。"}, {"c": "8C", "clean_c": "8C", "n": "一、施作牙位：36。二、服務項目。1.恆牙第一大臼齒窩溝封填。2.一般口腔檢查、衛教指導。三、補助對象。1.國小學童(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月)。2.不含山地原住民鄉、離島地區及身心障礙國小學童。", "en": "", "p": 400, "cats": [], "ages": ["未滿十二歲"], "common_conds": ["窩溝封填", "特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "※111年7月22日衛生福利部衛部口字第11120610158A號公告自111年9月1日起生效「醫事服務機構辦理口腔預防保健服務注意事項」部分規定修正。"}, {"c": "8D", "clean_c": "8D", "n": "一、施作牙位：46。二、服務項目。1.恆牙第一大臼齒窩溝封填。2.一般口腔檢查、衛教指導。三、補助對象：1.國小學童(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月)。2.不含山地原住民鄉、離島地區及身心障礙國小學童。", "en": "", "p": 400, "cats": [], "ages": ["未滿十二歲"], "common_conds": ["窩溝封填", "特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "※111年7月22日衛生福利部衛部口字第11120610158A號公告自111年9月1日起生效「醫事服務機構辦理口腔預防保健服務注意事項」部分規定修正。"}, {"c": "8E", "clean_c": "8E", "n": "一、施作牙位：16。二、服務項目：1.恆牙第一大臼齒窩溝封填。2.一般口腔檢查、衛教指導。(補助對象詳附註)", "en": "", "p": 470, "cats": [], "ages": ["未滿十二歲"], "common_conds": ["窩溝封填", "特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "補助對象：1.山地原住民鄉及離島地區之國小學童(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月)補助條件：依兒童戶籍資料之所在地或學校所在地認定。2.身心障礙之國小學童(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月)。補助條件：持有社政主管機關核發之身心障礙手冊或身心障礙證明。※111年7月22日衛生福利部衛部口字第11120610158A號公告自111年9月1日起生效「醫事服務機構辦理口腔預防保健服務注意事項」部分規定修正。"}, {"c": "8F", "clean_c": "8F", "n": "一、施作牙位：26。二、服務項目：1.恆牙第一大臼齒窩溝封填。2.一般口腔檢查、衛教指導。(補助對象詳附註)", "en": "", "p": 470, "cats": [], "ages": ["未滿十二歲"], "common_conds": ["窩溝封填", "特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "補助對象：1.山地原住民鄉及離島地區之國小學童(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月)補助條件：依兒童戶籍資料之所在地或學校所在地認定。2.身心障礙之國小學童(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月)。補助條件：持有社政主管機關核發之身心障礙手冊或身心障礙證明。※111年7月22日衛生福利部衛部口字第11120610158A號公告自111年9月1日起生效「醫事服務機構辦理口腔預防保健服務注意事項」部分規定修正。"}, {"c": "8G", "clean_c": "8G", "n": "一、施作牙位：36。二、服務項目：1.恆牙第一大臼齒窩溝封填。2.一般口腔檢查、衛教指導。(補助對象詳附註)", "en": "", "p": 470, "cats": [], "ages": ["未滿十二歲"], "common_conds": ["窩溝封填", "特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "補助對象：1.山地原住民鄉及離島地區之國小學童(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月)補助條件：依兒童戶籍資料之所在地或學校所在地認定。2.身心障礙之國小學童(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月)。補助條件：持有社政主管機關核發之身心障礙手冊或身心障礙證明。※111年7月22日衛生福利部衛部口字第11120610158A號公告自111年9月1日起生效「醫事服務機構辦理口腔預防保健服務注意事項」部分規定修正。"}, {"c": "8H", "clean_c": "8H", "n": "一、施作牙位：46。二、服務項目：1.恆牙第一大臼齒窩溝封填。2.一般口腔檢查、衛教指導。(補助對象詳附註)", "en": "", "p": 470, "cats": [], "ages": ["未滿十二歲"], "common_conds": ["窩溝封填", "特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "補助對象：1.山地原住民鄉及離島地區之國小學童(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月)補助條件：依兒童戶籍資料之所在地或學校所在地認定。2.身心障礙之國小學童(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月)。補助條件：持有社政主管機關核發之身心障礙手冊或身心障礙證明。※111年7月22日衛生福利部衛部口字第11120610158A號公告自111年9月1日起生效「醫事服務機構辦理口腔預防保健服務注意事項」部分規定修正。"}, {"c": "8I", "clean_c": "8I", "n": "一、施作牙位：16。二、服務項目：1.恆牙第一大臼齒窩溝封填評估或脫落補施作。2.一般口腔檢查、口腔保健衛教指導。三、補助對象：第一次評估檢查(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月)（同一牙位窩溝封填施作間隔六個月以上）。", "en": "", "p": 100, "cats": [], "ages": [], "common_conds": ["窩溝封填"], "other_conds": [], "sn": "", "nt": "※111年7月22日衛生福利部衛部口字第11120610158A號公告自111年9月1日起生效「醫事服務機構辦理口腔預防保健服務注意事項」部分規定修正。"}, {"c": "8J", "clean_c": "8J", "n": "一、施作牙位：26。二、服務項目：1.恆牙第一大臼齒窩溝封填評估或脫落補施作。2.一般口腔檢查、口腔保健衛教指導。三、補助對象：第一次評估檢查(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月)（同一牙位窩溝封填施作間隔六個月以上）。", "en": "", "p": 100, "cats": [], "ages": [], "common_conds": ["窩溝封填"], "other_conds": [], "sn": "", "nt": "※111年7月22日衛生福利部衛部口字第11120610158A號公告自111年9月1日起生效「醫事服務機構辦理口腔預防保健服務注意事項」部分規定修正。"}, {"c": "8K", "clean_c": "8K", "n": "一、施作牙位：36。二、服務項目：1.恆牙第一大臼齒窩溝封填評估或脫落補施作。2.一般口腔檢查、口腔保健衛教指導。三、補助對象：第一次評估檢查(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月)（同一牙位窩溝封填施作間隔六個月以上）。", "en": "", "p": 100, "cats": [], "ages": [], "common_conds": ["窩溝封填"], "other_conds": [], "sn": "", "nt": "※111年7月22日衛生福利部衛部口字第11120610158A號公告自111年9月1日起生效「醫事服務機構辦理口腔預防保健服務注意事項」部分規定修正。"}, {"c": "8L", "clean_c": "8L", "n": "一、施作牙位：46。二、服務項目：1.恆牙第一大臼齒窩溝封填評估或脫落補施作。2.一般口腔檢查、口腔保健衛教指導。三、補助對象：第一次評估檢查(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月)（同一牙位窩溝封填施作間隔六個月以上）。", "en": "", "p": 100, "cats": [], "ages": [], "common_conds": ["窩溝封填"], "other_conds": [], "sn": "", "nt": "※111年7月22日衛生福利部衛部口字第11120610158A號公告自111年9月1日起生效「醫事服務機構辦理口腔預防保健服務注意事項」部分規定修正。"}, {"c": "8M", "clean_c": "8M", "n": "一、施作牙位：16。二、服務項目：1.恆牙第一大臼齒窩溝封填評估或脫落補施作。2.一般口腔檢查、口腔保健衛教指導。三、補助對象：第二次評估檢查(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月)（同一牙位窩溝封填施作間隔十二個月以上，且與第一次評估檢查間隔六個月以上）。", "en": "", "p": 100, "cats": [], "ages": [], "common_conds": ["窩溝封填"], "other_conds": [], "sn": "", "nt": "※111年7月22日衛生福利部衛部口字第11120610158A號公告自111年9月1日起生效「醫事服務機構辦理口腔預防保健服務注意事項」部分規定修正。"}, {"c": "8N", "clean_c": "8N", "n": "一、施作牙位：26。二、服務項目：1.恆牙第一大臼齒窩溝封填評估或脫落補施作。2.一般口腔檢查、口腔保健衛教指導。三、補助對象：第二次評估檢查(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月)（同一牙位窩溝封填施作間隔十二個月以上，且與第一次評估檢查間隔六個月以上）。", "en": "", "p": 100, "cats": [], "ages": [], "common_conds": ["窩溝封填"], "other_conds": [], "sn": "", "nt": "※111年7月22日衛生福利部衛部口字第11120610158A號公告自111年9月1日起生效「醫事服務機構辦理口腔預防保健服務注意事項」部分規定修正。"}, {"c": "8O", "clean_c": "8O", "n": "一、施作牙位：36。二、服務項目：1.恆牙第一大臼齒窩溝封填評估或脫落補施作。2.一般口腔檢查、口腔保健衛教指導。三、補助對象：第二次評估檢查(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月)（同一牙位窩溝封填施作間隔十二個月以上，且與第一次評估檢查間隔六個月以上）。", "en": "", "p": 100, "cats": [], "ages": [], "common_conds": ["窩溝封填"], "other_conds": [], "sn": "", "nt": "※111年7月22日衛生福利部衛部口字第11120610158A號公告自111年9月1日起生效「醫事服務機構辦理口腔預防保健服務注意事項」部分規定修正。"}, {"c": "8P", "clean_c": "8P", "n": "一、施作牙位：46。二、服務項目：1.恆牙第一大臼齒窩溝封填評估或脫落補施作。2.一般口腔檢查、口腔保健衛教指導。三、補助對象：第二次評估檢查(施作年齡條件：七十二個月≦就醫年月－出生年月≦一百四十四個月)（同一牙位窩溝封填施作間隔十二個月以上，且與第一次評估檢查間隔六個月以上）。", "en": "", "p": 100, "cats": [], "ages": [], "common_conds": ["窩溝封填"], "other_conds": [], "sn": "", "nt": "※111年7月22日衛生福利部衛部口字第11120610158A號公告自111年9月1日起生效「醫事服務機構辦理口腔預防保健服務注意事項」部分規定修正。"}, {"c": "90001C", "clean_c": "90001C", "n": "恆牙根管治療（單根）", "en": "Endodontic treatment of a permanent tooth with single root canal", "p": 1210, "cats": ["根管"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.本項費用包括Ｘ光費用、局部麻醉、斷髓治療、根管沖洗、換藥、擴大及根管充填等各有關治療項目費用在內。2.本項目於全部治療過程完畢併加90015C專案申報；如未完成，改以90015C申報。（期間限申報一次診療費）3.申報費用時，需附治療前與治療後Ｘ光片以為審核；「全民健康保險牙醫門診總額特殊醫療服務計畫」之適用對象無法配合照射X光片不在此限。4.六十天之同一牙位重新治療為同一療程。5.如同牙位九十天內重覆申報90001C、90002C、90003C、90019C、90020C者，則以支付點數最高者支付。"}, {"c": "90002C", "clean_c": "90002C", "n": "恆牙根管治療（雙根）", "en": "Endodontic treatment of a permanent tooth with two root canals", "p": 2410, "cats": ["根管"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.本項費用包括Ｘ光費用、局部麻醉、斷髓治療、根管沖洗、換藥、擴大及根管充填等各有關治療項目費用在內。2.本項目於全部治療過程完畢併加90015C專案申報；如未完成，改以90015C申報。（期間限申報一次診療費）3.申報費用時，需附治療前與治療後Ｘ光片以為審核；「全民健康保險牙醫門診總額特殊醫療服務計畫」之適用對象無法配合照射X光片不在此限。4.六十天之同一牙位重新治療為同一療程。5.如同牙位九十天內重覆申報90001C、90002C、90003C、90019C、90020C者，則以支付點數最高者支付。"}, {"c": "90003C", "clean_c": "90003C", "n": "恆牙根管治療（三根）", "en": "Endodontics treatment of a permanent tooth with three root canals", "p": 3610, "cats": ["根管"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.本項費用包括Ｘ光費用、局部麻醉、斷髓治療、根管沖洗、換藥、擴大及根管充填等各有關治療項目費用在內。2.本項目於全部治療過程完畢併加90015C專案申報；如未完成，改以90015C申報。（期間限申報一次診療費）3.申報費用時，需附治療前與治療後Ｘ光片以為審核；「全民健康保險牙醫門診總額特殊醫療服務計畫」之適用對象無法配合照射X光片不在此限。4.六十天之同一牙位重新治療為同一療程。5.如同牙位九十天內重覆申報90001C、90002C、90003C、90019C、90020C者，則以支付點數最高者支付。"}, {"c": "90004C", "clean_c": "90004C", "n": "齒內治療緊急處理", "en": "Management of endodontic emergencies", "p": 150, "cats": ["根管"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.需記載具體處置內容。2.此項不得申請轉診加成。"}, {"c": "90005C", "clean_c": "90005C", "n": "乳牙斷髓處理", "en": "Pulpotomy of primary tooth", "p": 800, "cats": ["兒牙", "根管"], "ages": ["未滿十二歲"], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.需附治療前Ｘ光片以為審核(Ｘ光片費用已內含)。2.六十天內，不得再申報90015C。3.麻醉費用內含。"}, {"c": "90006C", "clean_c": "90006C", "n": "去除縫成牙冠", "en": "Removal of s-p crown", "p": 240, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.申報費用時，需附治療前Ｘ光片及治療後Ｘ光片或相片(規格需為3*5吋以上且可清晰判讀)以為審核（Ｘ光片或相片費用已內含），合併拔牙的切除牙橋處置，可免附術後X光片。2.此項不得申請轉診加成。"}, {"c": "90007C", "clean_c": "90007C", "n": "去除全鑲面牙冠", "en": "Removal of full veneer crown", "p": 800, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.需附治療前Ｘ光片及治療後Ｘ光片或相片(規格需為3*5吋以上且可清晰判讀)以為審核（Ｘ光片或相片費用已內含），合併拔牙的切除牙橋處置，可免附術後X光片或相片。2.申報 90007C後不得另行申報OD(覆髓除外)。3.此項不得申請轉診加成。"}, {"c": "90008C", "clean_c": "90008C", "n": "去除釘柱-每一釘柱", "en": "Removal of post", "p": 1235, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "申報費用時，需附治療前與治療後Ｘ光片以為審核(X光片費用已內含)。"}, {"c": "90010C", "clean_c": "90010C", "n": "根尖逆充填術", "en": "Root-end filling", "p": 900, "cats": ["根管"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "以根管數計算，需檢附術後Ｘ光片（Ｘ光片費用已內含）"}, {"c": "90011C", "clean_c": "90011C", "n": "牙齒再植術", "en": "Intentional tooth replantation", "p": 1000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "不包括根管治療，需檢附術前及術後Ｘ光片以為審核（Ｘ光片費用已內含）"}, {"c": "90012C", "clean_c": "90012C", "n": "橡皮障防濕裝置", "en": "Rubber dam isolation", "p": 150, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.銀粉、複合樹脂、玻璃離子體及複合體充填時，橡皮障防濕裝置視病情需要使用。2.使用橡皮障防濕裝置時，需檢附Ｘ光片或相片(規格需為3*5吋以上且可清晰判讀)佐證。（X光片或相片費用已內含）。"}, {"c": "90013C", "clean_c": "90013C", "n": "根尖成形術或根尖生成術-前牙", "en": "Apexification or Apexogenesis-Anterior tooth", "p": 500, "cats": ["根管"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.限開根尖式根管者(open apex)。2.處置完成（根尖成形）後需檢附術前、術後Ｘ光片（術後X光片費用另計）申報，處置完成前之追蹤檢查，每三個月可視需要申報診察費及Ｘ光費用。"}, {"c": "90014C", "clean_c": "90014C", "n": "根尖成形術或根尖生成術-後牙", "en": "Apexification or Apexogenesis-Posterior tooth", "p": 1000, "cats": ["根管"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.限開根尖式根管者(open apex)。2.處置完成（根尖成形）後需檢附術前、術後Ｘ光片（術後X光片費用另計）申報，處置完成前之追蹤檢查，每三個月可視需要申報診察費及Ｘ光費用。"}, {"c": "90015C", "clean_c": "90015C", "n": "根管開擴及清創", "en": "Access cavity preparation, cleaning and shaping of the root canal system", "p": 600, "cats": ["根管"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "註：1.單獨申報此費用時，需檢附未完成充填前Ｘ光片以為審核。全民健康保險牙醫門診總額特殊醫療服務計畫之適用對象不在此限。2.已申報斷髓處理，60天內不得再申報此項費用。3. 六十天內不得重覆申報。4.本項目Ｘ光片費用已內含。5.麻醉費用內含。"}, {"c": "90016C", "clean_c": "90016C", "n": "乳牙根管治療", "en": "Endodontic treatment of primary tooth", "p": 1010, "cats": ["兒牙", "根管"], "ages": ["未滿十二歲"], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.本項費用包括Ｘ光費用、局部麻醉、拔髓治療、根管沖洗、換藥、擴大及充填等各有關治療項目費用在內。2.本項目於全部治療過程完畢併加90015C專案申報(如已申報90005C，六十天內不得再併加90015C申報)；如未完成，改以90015C申報。(期間限申報一次診療費)3.申報費用時，需附治療前與治療後Ｘ光片以為審核。全民健康保險牙醫門診總額特殊醫療服務計畫之適用對象，如情況特殊無法配合，得不在此限，但應於病歷詳細記錄原因。4.90天內不得重複申報。"}, {"c": "90017C", "clean_c": "90017C", "n": "恆牙斷髓處理", "en": "Pulpotomy of permanent tooth", "p": 600, "cats": ["根管"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "註：限全民健康保險牙醫門診總額特殊醫療服務計畫適用對象之牙醫醫療服務申報。"}, {"c": "90018C", "clean_c": "90018C", "n": "乳牙多根管治療", "en": "Endodontic treatment of a primary tooth with multiple canals", "p": 1690, "cats": ["兒牙", "根管"], "ages": ["未滿十二歲"], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "註：1.本項費用包括Ｘ光費用、局部麻醉、拔髓治療、根管沖洗、換藥、擴大及充填等各有關治療項目費用在內。2.本項目於全部治療過程完畢併加 90015C專案申報（如已申報90005C，六十天內不得再併加90015C申報）；如未完成，改以90015C申報。（期間限申報一次診療費）3.申報費用時，需附治療前與治療後Ｘ光片以為審核。全民健康保險牙醫門診總額特殊醫療服務計畫之適用對象，如情況特殊無法配合，得不在此限，但應於病歷詳細記錄原因。4.九十天內不得重複申報。"}, {"c": "90019C", "clean_c": "90019C", "n": "恆牙根管治療（四根）", "en": "Endodontic treatment of a permanent tooth with four root canals", "p": 4810, "cats": ["根管"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.本項費用包括Ｘ光費用、局部麻醉、斷髓治療、根管沖洗、換藥、擴大及根管充填等各有關治療項目費用在內。2.本項目於全部治療過程完畢併加90015C專案申報；如未完成，改以90015C申報。（期間限申報一次診療費）3.申報費用時，需附治療前與治療後Ｘ光片以為審核；「全民健康保險牙醫門診總額特殊醫療服務計畫」之適用對象無法配合照射X光片不在此限。4.六十天之同一牙位重新治療為同一療程。5.如同牙位九十天內重覆申報90001C、90002C、90003C、90019C、90020C者，則以支付點數最高者支付。"}, {"c": "90020C", "clean_c": "90020C", "n": "恆牙根管治療（五根(含)以上）", "en": "Endodontic treatment of a permanent tooth with five(and above) root canals", "p": 6010, "cats": ["根管"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.本項費用包括Ｘ光費用、局部麻醉、斷髓治療、根管沖洗、換藥、擴大及根管充填等各有關治療項目費用在內。2.本項目於全部治療過程完畢併加90015C專案申報；如未完成，改以90015C申報。（期間限申報一次診療費）3.申報費用時，需附治療前與治療後Ｘ光片以為審核；「全民健康保險牙醫門診總額特殊醫療服務計畫」之適用對象無法配合照射X光片不在此限。4.六十天之同一牙位重新治療為同一療程。5.如同牙位九十天內重覆申報90001C、90002C、90003C、90019C、90020C者，則以支付點數最高者支付。"}, {"c": "90021C", "clean_c": "90021C", "n": "特殊狀況—保護性肢體制約", "en": "Protective physical restraint for patients with special needs", "p": 300, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "註：1.治療時需使用束縛帶於身心障礙者的四肢以防止躁動。2.限全民健康保險牙醫門診總額特殊醫療服務計畫中度以上適用對象之牙醫醫療服務申報。3.須檢附病患或監護人同意書及接受治療患者使用束縛帶的診療照片乙張。"}, {"c": "90088C", "clean_c": "90088C", "n": "根管治療轉出醫療院所之轉診費用", "en": "Referral fee for Endodontic treatment", "p": 200, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.交付病人牙醫醫療院所轉診單，且病歷應記載。2.提供病人或家屬相關諮詢及轉出病歷摘要(不包含X光片)。3.此項不得申請轉診加成。"}, {"c": "90091C", "clean_c": "90091C", "n": "難症特別處理-大臼齒(C－Shaped)根管", "en": "Management of endodontic difficult case", "p": 1000, "cats": ["根管"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "上列支付項目90091C-90098C申報說明如下列：註：1. 90091C-90094C須檢附術前或術後舉證之X光片，其餘需附診斷、測量長度及充填完成之Ｘ光片（Ｘ光片費用已內含）。2.GP過度充填(over filling)不得申報90095C~90098C。"}, {"c": "90092C", "clean_c": "90092C", "n": "難症特別處理－有額外根管者(1)前牙及下顎小臼齒有超過一根管者。(2)上顎小臼齒有超過二根管者。(3)大臼齒有超過三根管者。(4)以實際超過根管數計算。", "en": "Management of endodontic difficult case", "p": 1000, "cats": ["根管"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "上列支付項目90091C-90098C申報說明如下列：註：1. 90091C-90094C須檢附術前或術後舉證之X光片，其餘需附診斷、測量長度及充填完成之Ｘ光片（Ｘ光片費用已內含）。2.GP過度充填(over filling)不得申報90095C~90098C。"}, {"c": "90093C", "clean_c": "90093C", "n": "難症特別處理-根管特別彎曲、根管鈣化，器械斷折（非同一醫療院所)，以根管數計算", "en": "Management of endodontic difficult case", "p": 1000, "cats": ["根管"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "上列支付項目90091C-90098C申報說明如下列：註：1. 90091C-90094C須檢附術前或術後舉證之X光片，其餘需附診斷、測量長度及充填完成之Ｘ光片（Ｘ光片費用已內含）。2.GP過度充填(over filling)不得申報90095C~90098C。"}, {"c": "90094C", "clean_c": "90094C", "n": "難症特別處理-根管重新治療在Ｘ光片上root canal內顯現出radioopaque等有obstruction之根管等個案，以根管數計算", "en": "Management of endodontic difficult case", "p": 1500, "cats": ["根管"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "上列支付項目90091C-90098C申報說明如下列：註：1. 90091C-90094C須檢附術前或術後舉證之X光片，其餘需附診斷、測量長度及充填完成之Ｘ光片（Ｘ光片費用已內含）。2.GP過度充填(over filling)不得申報90095C~90098C。"}, {"c": "90095C", "clean_c": "90095C", "n": "難症特別處理-符合附表3.3.1標準之多根管根管治療。(雙根管)", "en": "Management of endodontic difficult case", "p": 1600, "cats": ["根管"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "上列支付項目90091C-90098C申報說明如下列：註：1. 90091C-90094C須檢附術前或術後舉證之X光片，其餘需附診斷、測量長度及充填完成之Ｘ光片（Ｘ光片費用已內含）。2.GP過度充填(over filling)不得申報90095C~90098C。"}, {"c": "90096C", "clean_c": "90096C", "n": "難症特別處理-符合附表3.3.1標準之多根管根管治療。(三根管)", "en": "Management of endodontic difficult case", "p": 2400, "cats": ["根管"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "上列支付項目90091C-90098C申報說明如下列：註：1. 90091C-90094C須檢附術前或術後舉證之X光片，其餘需附診斷、測量長度及充填完成之Ｘ光片（Ｘ光片費用已內含）。2.GP過度充填(over filling)不得申報90095C~90098C。"}, {"c": "90097C", "clean_c": "90097C", "n": "難症特別處理-符合附表3.3.1標準之多根管根管治療。(四根管)", "en": "Management of endodontic difficult case", "p": 3200, "cats": ["根管"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "上列支付項目90091C-90098C申報說明如下列：註：1. 90091C-90094C須檢附術前或術後舉證之X光片，其餘需附診斷、測量長度及充填完成之Ｘ光片（Ｘ光片費用已內含）。2.GP過度充填(over filling)不得申報90095C~90098C。"}, {"c": "90098C", "clean_c": "90098C", "n": "難症特別處理-符合附表3.3.1標準之多根管根管治療。(五根及五根以上根管)", "en": "Management of endodontic difficult case", "p": 4000, "cats": ["根管"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "上列支付項目90091C-90098C申報說明如下列：註：1. 90091C-90094C須檢附術前或術後舉證之X光片，其餘需附診斷、測量長度及充填完成之Ｘ光片（Ｘ光片費用已內含）。2.GP過度充填(over filling)不得申報90095C~90098C。"}, {"c": "90112C", "clean_c": "90112C", "n": "特殊狀況橡皮障防濕裝置", "en": "Rubber dam isolation for patients with special needs", "p": 250, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "註：1.治療需要時，需使用橡皮障防濕裝置費(限全民健康保險牙醫門診總額特殊醫療服務計畫適用對象之牙醫醫療服務申報) 。2.使用橡皮障防濕裝置時，需檢附X光片或相片(規格需為3*5吋以上且可清晰判讀)佐證（X光片或相片費用已內含）。3.含張口器費用。"}, {"c": "91001C", "clean_c": "91001C", "n": "牙周緊急處置", "en": "Management of periodontal emergencies", "p": 150, "cats": ["洗牙"], "ages": [], "common_conds": [], "other_conds": [], "sn": "同象限每月限申報兩次", "nt": "1.每月限申報二次，同一象限不得重複申報。2.申報費用以次為單位。3.不得與91003C、91004C、91005C、91017C、91103C、91104C、91019C、91089C或91090C同時申報。4.此項不得申請轉診加成。"}, {"c": "91002C", "clean_c": "91002C", "n": "牙周敷料  每次", "en": "Periodontal packing", "p": 120, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.二分之一顎以下  2.合併手術主處置申報。"}, {"c": "91003C", "clean_c": "91003C", "n": "牙結石清除－局部", "en": "Scaling-Localized", "p": 165, "cats": ["洗牙"], "ages": ["未滿十二歲"], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.限有治療需要之病人每半年最多申報一次。2.半年內全口分次執行之局部結石清除，均視為同一療程，其診察費僅給付一次。同療程時間內若另申報全口牙結石清除術，則刪除同療程內已申報之局部牙結石清除費用。(同象限不得重覆申報)3.牙結石清除須作潔牙說明，其後作刷牙復習。4.91003C需依四象限申報。5.未滿十二歲兒童（「全民健康保險牙醫門診總額特殊醫療服務計畫」之適用對象除外）非全口性牙周病者不得申報全口牙結石清除，病歷上應詳實記載備查;申報91003C或91004C需附相片(規格需為3*5吋以上且可清晰判讀)或X光片以為審核。6.本項不得申請轉診加成。7.申報本項後九十天內不得再申報91005C、91017C、91089C、91090C、91103C及91104C。8.四十歲以上病人，本項得另加計百分之九點一。"}, {"c": "91004C", "clean_c": "91004C", "n": "牙結石清除－全口", "en": "Scaling-Full mouth", "p": 660, "cats": ["洗牙"], "ages": ["未滿十二歲"], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "1.未滿十二歲可改報91020
+2.每年可與91014併報一次", "nt": "1.限有治療需要之病人每半年最多申報一次。2.半年內全口分次執行之局部結石清除，均視為同一療程，其診察費僅給付一次。同療程時間內若另申報全口牙結石清除術，則刪除同療程內已申報之局部牙結石清除費用。(同象限不得重覆申報)3.牙結石清除須作潔牙說明，其後作刷牙復習。4.91003C需依四象限申報。5.未滿十二歲兒童（「全民健康保險牙醫門診總額特殊醫療服務計畫」之適用對象除外）非全口性牙周病者不得申報全口牙結石清除，病歷上應詳實記載備查;申報91003C或91004C需附相片(規格需為3*5吋以上且可清晰判讀)或X光片以為審核。6.本項不得申請轉診加成。7.申報本項後九十天內不得再申報91005C、91017C、91089C、91090C、91103C及91104C。8.四十歲以上病人，本項得另加計百分之九點一。"}, {"c": "91005C", "clean_c": "91005C", "n": "口乾症牙結石清除-全口", "en": "Full mouth scaling for xerostomia patients", "p": 720, "cats": ["洗牙"], "ages": [], "common_conds": ["口乾症"], "other_conds": [], "sn": "", "nt": "1.適用口乾症病人之牙醫醫療服務申報。2.限有治療需要之病人每九十天最多申報一次。3.申報本項後九十天內不得再申報91003C、91004C、91017C、91089C、91090C、91103C及91104C。"}, {"c": "91006C", "clean_c": "91006C", "n": "齒齦下括除術(含牙根整平術)-全口", "en": "Subgingival curettage (including Root planing)－Full mouth", "p": 3200, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.每顆需接受治療牙齒應詳細記載六個測量部位之牙周囊袋深度，其中至少一個測量部位囊袋深度超過5mm以上2.申報費用應註明囊袋深度紀錄之病歷影本及治療前之Ｘ光片(限咬翼片或根尖片)。3.以象限區域為單位，當該象限需接受治療為三齒以內時，申報一次91008C；當其需接受治療為四齒以上時，申報一次91007C；全口四象限中各象限需接受治療皆為四齒以上時，申報一次91006C。4.半年內施行於同一象限之齒齦下刮除術均不得申報費用。5.已申報91006C或91007C三次以上者，一年內不得申報牙周病統合性治療方案91021C~91023C。"}, {"c": "91007C", "clean_c": "91007C", "n": "齒齦下括除術(含牙根整平術)-二分之一顎", "en": "Subgingival curettage (Root planing)-1/2 arch", "p": 800, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.每顆需接受治療牙齒應詳細記載六個測量部位之牙周囊袋深度，其中至少一個測量部位囊袋深度超過5mm以上2.申報費用應註明囊袋深度紀錄之病歷影本及治療前之Ｘ光片(限咬翼片或根尖片)。3.以象限區域為單位，當該象限需接受治療為三齒以內時，申報一次91008C；當其需接受治療為四齒以上時，申報一次91007C；全口四象限中各象限需接受治療皆為四齒以上時，申報一次91006C。4.半年內施行於同一象限之齒齦下刮除術均不得申報費用。5.已申報91006C或91007C三次以上者，一年內不得申報牙周病統合性治療方案91021C~91023C。"}, {"c": "91008C", "clean_c": "91008C", "n": "齒齦下括除術(含牙根整平術)-局部(3齒以內)", "en": "Subgingival curettage (including Root planing)-Localized", "p": 400, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.每顆需接受治療牙齒應詳細記載六個測量部位之牙周囊袋深度，其中至少一個測量部位囊袋深度超過5mm以上。2.申報費用應註明囊袋深度紀錄之病歷影本及治療前之Ｘ光片(限咬翼片或根尖片)。3.以象限區域為單位，當該象限需接受治療為三齒以內時，申報一次91008C；當其需接受治療為四齒以上時，申報一次91007C；全口四象限中各象限需接受治療皆為四齒以上時，申報一次91006C。4.半年內施行於同一象限之齒齦下刮除術均不得申報費用。5.已申報91006C或91007C三次以上者，一年內不得申報牙周病統合治療方案91021C~91023C。"}, {"c": "91009B", "clean_c": "91009B", "n": "牙周骨膜翻開術-局部(牙周囊袋 5mm以上3齒以內)", "en": "Periodontal flap operation-Localized", "p": 4500, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.申報費用應註明囊袋深度紀錄之病歷影本及治療前之Ｘ光片（限咬翼片或根尖片）。2.費用包括手術費、Ｘ光檢查、局部麻醉、牙周敷料、拆線及十四天內之術後診察、處置費用。3.以「區域」方式申報，如有跨相鄰區域，需治療之牙齒為三齒以內，擇一區域申報。同區域二年內不得重複申報，且應檢附二年內牙科完整病歷並附牙周手術同意書(參考格式附表3.3.2)。4.牙周骨膜翻開術(91009B-91010B)囊袋紀錄表應以每顆牙六個測量部位為準。所需時間分別為四十分鐘及六十分鐘。"}, {"c": "91010B", "clean_c": "91010B", "n": "牙周骨膜翻開術-三分之一 顎(牙周囊袋 5mm以上 4至6齒)", "en": "Periodontal flap operation-1/3 arch", "p": 7500, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.申報費用應註明囊袋深度紀錄之病歷影本及治療前之Ｘ光片（限咬翼片或根尖片）。2.費用包括手術費、Ｘ光檢查、局部麻醉、牙周敷料、拆線及十四天內之術後診察、處置費用。3.以「區域」方式申報，如有跨相鄰區域，需治療之牙齒為三齒以內，擇一區域申報。同區域二年內不得重複申報，且應檢附二年內牙科完整病歷並附牙周手術同意書(參考格式附表3.3.2)。4.牙周骨膜翻開術(91009B-91010B)囊袋紀錄表應以每顆牙六個測量部位為準。所需時間分別為四十分鐘及六十分鐘。"}, {"c": "91011C", "clean_c": "91011C", "n": "牙齦切除術-局部（3齒以內）", "en": "Gingivectomy-Localized", "p": 910, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "有補牙或根管所併報的牙齦切除請報91013", "nt": "1.包括牙齦修整術(Gingivoplasty)在內。2.需附牙周囊袋記錄，每顆應詳細記載六個測量部位，其中至少一個測量部位為5㎜以上。3.局部麻醉費用已內含。"}, {"c": "91012C", "clean_c": "91012C", "n": "牙齦切除術 － 三分之一顎", "en": "Gingivectomy-1/3 arch", "p": 1510, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "有補牙或根管所併報的牙齦切除請報91013", "nt": "1.包括牙齦修整術(Gingivoplasty)在內。2.需附牙周囊袋記錄，每顆應詳細記載六個測量部位，其中至少一個測量部位為5㎜以上。3.局部麻醉費用已內含。"}, {"c": "91013C", "clean_c": "91013C", "n": "牙齦切除術-施行根管治療或牙體復形時，所需之牙齦切除術", "en": "Gingivectomy for endodontic or restorative purposes", "p": 330, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "需併報補牙或根管，不可再報麻醉處置", "nt": "1.不得同時申報 91011C及 91012C。2.應與根管治療或牙體復形合併申報。3.局部麻醉費用已內含。4.以合併之主處置齒位申報。"}, {"c": "91014C", "clean_c": "91014C", "n": "牙周暨齲齒控制基本處置", "en": "Plaque control", "p": 100, "cats": ["洗牙"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.牙菌斑偵測及去除維護教導。2.需併同91003C(應詳載如部分象限缺牙等之特殊狀況)、91004C、91005C實施，每三百六十天限申報一次；併同91020C實施，每一百八十天限申報一次。"}, {"c": "91015C", "clean_c": "91015C", "n": "特定牙周保存治療-全口總齒數9至15顆", "en": "Comprehensive periodontal treatment for patients with special needs─9≦ no. of teeth≦15", "p": 2120, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.限總齒數至少一顆且未達十六顆之病人申報。2.申報費用時，需附一年內牙菌斑控制紀錄及囊袋深度紀錄（其中全口總齒數九至十五顆者，至少四顆牙齒有測量部位囊袋深度超過5mm以上；全口總齒數四至八顆者，至少二顆牙齒有測量部位囊袋深度超過5mm以上；全口總齒數一至三顆者，至少一顆牙齒有測量部位囊袋深度超過5mm以上）及治療前全口Ｘ光片（須符合病人口腔現況，X光片費用另計，環口全景X光片費用不另計）以為審核。3.本項主要執行牙周檢查、牙菌斑控制紀錄及去除指導，並視病人病情提供全口牙結石清除、齒齦下刮除或牙根整平之治療。4.每九十天限申報一次。5.申報91006C~91008C半年內不得申報本項目。另申報此項九十天內不得再申報91003C~91004C、91005C、91006C~91008C、91017C、91089C、91090C、91103C、91104C。"}, {"c": "91016C", "clean_c": "91016C", "n": "特定牙周保存治療-全口總齒數4至8顆", "en": "Comprehensive periodontal treatment for patients with special needs─4≦ no. of teeth≦8", "p": 1120, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.限總齒數至少一顆且未達十六顆之病人申報。2.申報費用時，需附一年內牙菌斑控制紀錄及囊袋深度紀錄（其中全口總齒數九至十五顆者，至少四顆牙齒有測量部位囊袋深度超過5mm以上；全口總齒數四至八顆者，至少二顆牙齒有測量部位囊袋深度超過5mm以上；全口總齒數一至三顆者，至少一顆牙齒有測量部位囊袋深度超過5mm以上）及治療前全口Ｘ光片（須符合病人口腔現況，X光片費用另計，環口全景X光片費用不另計）以為審核。3.本項主要執行牙周檢查、牙菌斑控制紀錄及去除指導，並視病人病情提供全口牙結石清除、齒齦下刮除或牙根整平之治療。4.每九十天限申報一次。5.申報91006C~91008C半年內不得申報本項目。另申報此項九十天內不得再申報91003C~91004C、91005C、91006C~91008C、91017C、91089C、91090C、91103C、91104C。"}, {"c": "91017C", "clean_c": "91017C", "n": "懷孕婦女牙結石清除-全口", "en": "Full mouth scaling for pregnant women", "p": 920, "cats": ["洗牙"], "ages": [], "common_conds": ["孕婦"], "other_conds": [], "sn": "", "nt": "1.適用懷孕婦女牙醫醫療服務並於當次病歷記載，懷孕期間每九十天限申報一次。2.費用包括牙結石清除、牙菌斑偵測、去除維護教導及新生兒口腔照護及衛教指導。3.申報本項後九十天內不得再申報91003C~91004C、91005C、91089C、91090C、91103C、91104C"}, {"c": "91018C", "clean_c": "91018C", "n": "牙周病支持性治療", "en": "Supportive periodontal treatment", "p": 1120, "cats": ["洗牙", "牙統"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.限經「牙周病統合治療方案」核備之醫師，執行院所內已完成第三階段91023C病人之牙醫醫療服務，且需與第二階段91022C間隔九十天。2.申報費用時，需附一年內牙菌斑控制紀錄及囊袋深度紀錄以為審核（其中至少一顆牙齒有測量部位囊袋深度超過5mm以上）。3.本項主要執行牙結石清除、牙菌斑偵測及去除維護教導，並視病人病情提供齒齦下刮除或牙根整平之治療。4.每九十天限申報一次。5.申報91006C~91008C半年內不得申報本項目。另申報此項九十天內不得再申報91003C~91004C、91005C、91006C~91008C、91015C~91016C、91017C、91089C、91090C、91103C、91104C。"}, {"c": "91019C", "clean_c": "91019C", "n": "懷孕婦女牙周緊急處置", "en": "Management of periodontal disease emergences for pregnant women", "p": 500, "cats": ["洗牙"], "ages": [], "common_conds": ["孕婦"], "other_conds": [], "sn": "可以媽媽手冊為懷孕依據", "nt": "1.限懷孕婦女之患者申報。2.本項主要施行懷孕期間口腔照顧及牙周病緊急處置，視患者實際需求提供局部沖洗、塗藥、口腔衛教、孕期急性牙周緊急處理等醫療服務，申報費用以次為單位。3.不得與91001C、91003C、91004C、91005C、91089C、91090C、91017C、91103C或91104C同時申報。"}, {"c": "91020C", "clean_c": "91020C", "n": "牙菌斑去除照護", "en": "Dental plaque removal", "p": 200, "cats": [], "ages": ["未滿十二歲"], "common_conds": [], "other_conds": [], "sn": "可和91014併報(同為每一百八十天申報)", "nt": "1.牙菌斑清除。2.每一百八十天限申報一次。3.限未滿十二歲兒童申報。"}, {"c": "91021C", "clean_c": "91021C", "n": "牙周病統合治療第一階段支付", "en": "comprehensive periodontal treatment", "p": 1800, "cats": ["牙統"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.本項主要施行治療前全口X光檢查及牙周病檢查，並須檢附牙周病檢查紀錄表供審查。2.應提供牙周病統合治療衛教照護資訊及口腔保健衛教指導。3.應檢附病人基本資料暨接受牙周病統合治療確認書。4未滿三十一歲患者須附全口根尖片或咬翼片。5.同院所於二年內再執行本方案之患者須附全口根尖片或咬翼片。6.執行本方案前，須至健保資訊網服務系統(VPN)進行牙周病統合治療實施方案查詢及登錄，未登錄不得申報本方案。"}, {"c": "91022C", "clean_c": "91022C", "n": "牙周病統合治療第二階段支付", "en": "comprehensive periodontal treatment", "p": 5000, "cats": ["牙統"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.本項主要施行全口齒齦下刮除或牙根整平之治療，並提供牙菌斑進階去除指導及控制紀錄。2.須檢附牙菌斑控制紀錄表及病歷供審查。"}, {"c": "91023C", "clean_c": "91023C", "n": "牙周病統合治療第三階段支付", "en": "comprehensive periodontal treatment", "p": 3200, "cats": ["牙統"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.本項主要進行治療後牙周病檢查及牙菌斑控制紀錄及評估治療情形。2.完成牙周病統合治療第二階段支付(91022C)治療日起四週（二十八天以上）後，經牙周病檢查原本牙周囊袋深度5mm以上之牙齒，至少一個部位深度降低2mm者達七成以上，且無非適應症之拔牙時，方得申報。3.須附治療前與治療後之牙菌斑控制紀錄表、牙周病檢查紀錄表及病歷供審查。"}, {"c": "91088C", "clean_c": "91088C", "n": "牙周病轉出醫療院所之轉診費用", "en": "Referral fee for Periodontal treatments", "p": 200, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.交付病人牙醫醫療院所轉診單，且病歷應記載。2.提供病人或家屬相關諮詢及轉出病歷摘要(不包含X光片)。3.此項不得申請轉診加成。"}, {"c": "91089C", "clean_c": "91089C", "n": "糖尿病病人牙結石清除-全口", "en": "Full mouth scaling for patients with diabetes mellitus", "p": 820, "cats": ["洗牙"], "ages": [], "common_conds": ["糖尿病"], "other_conds": [], "sn": "常與P7302併報", "nt": "1.適用糖尿病病人之牙醫醫療服務申報，每九十天限申報一次。2.費用包含牙菌斑偵測及去除維護教導。申報本項後九十天內不得再申報91003C~91005C、91017C、91090C、91103C及91104C。"}, {"c": "91090C", "clean_c": "91090C", "n": "高風險疾病患者牙結石清除-全口", "en": "Full mouth scaling for patients at high risk for dental diseases", "p": 820, "cats": ["洗牙"], "ages": ["六十五歲以上"], "common_conds": ["心血管疾病", "惡性腫瘤", "特殊需求者(特殊醫療服務)"], "other_conds": ["雙磷酸鹽", "抗骨鬆", "血液透析", "腹膜透析"], "sn": "常與P7302併報", "nt": "1.適用對象：須符合下列條件之一者(1)六十五歲以上者。(2)心血管疾病病人。(3)血液透析及腹膜透析病人。(4)使用雙磷酸鹽類或抗骨鬆單株抗體藥物病人。(5)惡性腫瘤病人。(6)非屬「全民健康保險牙醫門診總額特殊醫療服務計畫」院所牙醫醫療服務適用對象之身心障礙類別及障礙等級者。2.每九十天限申報一次。3.本項支付點數含牙菌斑偵測及去除維護教導。申報本項後九十天內不得再申報91003C~91005C、91017C、91089C、91103C及91104C。"}, {"c": "91091C", "clean_c": "91091C", "n": "特定牙周保存治療-全口總齒數一至三顆", "en": "Comprehensive periodontal treatment for patients with special needs  1≦ no.of teeth≦3", "p": 600, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.限總齒數至少一顆且未達十六顆之病人申報。2.申報費用時，需附一年內牙菌斑控制紀錄及囊袋深度紀錄（其中全口總齒數九至十五顆者，至少四顆牙齒有測量部位囊袋深度超過5mm以上；全口總齒數四至八顆者，至少二顆牙齒有測量部位囊袋深度超過5mm以上；全口總齒數一至三顆者，至少一顆牙齒有測量部位囊袋深度超過5mm以上）及治療前全口Ｘ光片（須符合病人口腔現況，X光片費用另計，環口全景X光片費用不另計）以為審核。3.本項主要執行牙周檢查、牙菌斑控制紀錄及去除指導，並視病人病情提供全口牙結石清除、齒齦下刮除或牙根整平之治療。4.每九十天限申報一次。5.申報91006C~91008C半年內不得申報本項目。另申報此項九十天內不得再申報91003C~91004C、91005C、91006C~91008C、91017C、91089C、91090C、91103C、91104C。"}, {"c": "91103C", "clean_c": "91103C", "n": "特殊狀況牙結石清除-局部", "en": "Scaling for patients with special needs-Localized", "p": 165, "cats": ["洗牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "1.適用於「全民健康保險牙醫門診總額特殊醫療服務計畫」之適用對象、化療、放射線治療病人之牙醫醫療服務申報。2.限有治療需要之病人每九十天最多申報一次。3.重度以上病人每六十天得申報一次。4.九十天內(重度以上六十天內)全口分次執行之局部結石清除，均視為同一療程，其診察費僅給付一次。同療程時間內若另申報全口牙結石清除術，則刪除同療程內已申報之局部牙結石清除費用 (同象限不得重覆申報) 。5.申報本項後九十天內(重度以上六十天內)不得再申報91003C、91004C、91005C、91017C、91089C及91090C。6.四十歲以上病人，本項得另加計百分之九點一。"}, {"c": "91104C", "clean_c": "91104C", "n": "特殊狀況牙結石清除-全口", "en": "Scaling for patients with special needs-Full mouth", "p": 660, "cats": ["洗牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "註：1.適用於「全民健康保險牙醫門診總額特殊醫療服務計畫」之適用對象、化療、放射線治療病人之牙醫醫療服務申報。2.限有治療需要之病人每九十天最多申報一次。3.重度以上病人每六十天得申報一次。4.九十天內(重度以上六十天內)全口分次執行之局部結石清除，均視為同一療程，其診察費僅給付一次。同療程時間內若另申報全口牙結石清除術，則刪除同療程內已申報之局部牙結石清除費用 (同象限不得重覆申報) 。5.申報本項後九十天內(重度以上六十天內)不得再申報91003C、91004C、91005C、91017C、91089C及91090C。6.四十歲以上病人，本項得另加計百分之九點一。"}, {"c": "91114C", "clean_c": "91114C", "n": "特殊牙周暨齲齒控制基本處置", "en": "Plaque control for patients with special needs", "p": 250, "cats": ["洗牙"], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "同91014，但間隔不同", "nt": "註：1.適用於「全民健康保險牙醫門診總額特殊醫療服務計畫」之適用對象、化療、放射線治療患者之牙醫醫療服務申報。 2.牙菌斑偵測及去除維護教導。3.九十天可申報一次。4.重度以上病人每六十天得申報一次。"}, {"c": "92001C", "clean_c": "92001C", "n": "非特定局部治療", "en": "Unspecified local treatment", "p": 50, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.包括局部藥物治療或燒灼或簡易脫臼及其他相關必要措施。2.三天內視為同一療程，三十天內限申報二次。3.此項不得申請轉診加成。"}, {"c": "92002C", "clean_c": "92002C", "n": "齒間暫時固定術，每齒", "en": "Temporary splinting for one tooth", "p": 100, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "需附術後Ｘ光片或照片舉證。"}, {"c": "92003C", "clean_c": "92003C", "n": "口內切開排膿", "en": "Intraoral incision & drainage with drains", "p": 510, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.腫脹區切開，引流，清創放置引流裝置並以縫線固定，傷口縫合及局部麻醉費用已內含。2.限蜂窩性組織炎及組織間隙膿瘍申報。"}, {"c": "92004C", "clean_c": "92004C", "n": "口外切開排膿", "en": "Extraoral incision & drainage", "p": 3000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.腫脹區切開，引流，清創放置引流裝置並以縫線固定，傷口縫合及局部麻醉費用已內含。2.限蜂窩性組織炎及組織間隙膿瘍申報。"}, {"c": "92005C", "clean_c": "92005C", "n": "拆線 每次", "en": "Removal of stitches", "p": 50, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92006C", "clean_c": "92006C", "n": "固定鋼線移除", "en": "Removal of splinting wire", "p": 500, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92007B", "clean_c": "92007B", "n": "鋼線固定 3齒以內", "en": "Closed reduction with interdental wiring fixation for 3 or fewer teeth", "p": 1270, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "本項支付點數已包含局部麻醉費用在內，但不含拆除費用。"}, {"c": "92008B", "clean_c": "92008B", "n": "鋼線固定(上顎或下顎固定術) 4齒以上", "en": "Closed reduction with wiring fixation for 4 or more teeth", "p": 2010, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "本項支付點數已包含局部麻醉費用在內，但不含拆除費用。"}, {"c": "92009C", "clean_c": "92009C", "n": "去除齒列夾板", "en": "Removal of splint", "p": 360, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92010B", "clean_c": "92010B", "n": "顎間固定法", "en": "Intermaxillary fixation (I.M.F.)", "p": 9780, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.包含arch bar 材料費及局部麻醉費用在內。2.申報費用應檢附手術記錄。"}, {"c": "92011B", "clean_c": "92011B", "n": "環繞結紮法", "en": "Circumferential wiring", "p": 2560, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92012C", "clean_c": "92012C", "n": "拔牙後特別處理", "en": "Post-operative care of extraction wound", "p": 160, "cats": ["拔牙"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "包括Dry Socket 或縫合止血及局部麻醉。"}, {"c": "92013C", "clean_c": "92013C", "n": "簡單性拔牙", "en": "Simple extraction", "p": 510, "cats": ["拔牙"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.本項支付點數已包含局部麻醉費用在內。 2.此項不得申請轉診加成。"}, {"c": "92014C", "clean_c": "92014C", "n": "複雜性拔牙", "en": "Complex extraction", "p": 900, "cats": ["拔牙"], "ages": ["六十五歲以上"], "common_conds": ["糖尿病", "高血壓", "惡性腫瘤", "癌", "孕婦", "特殊需求者(特殊醫療服務)"], "other_conds": ["器官移植", "洗腎", "張口困難", "愛滋病", "頭頸部"], "sn": "", "nt": "1.依牙醫門診總額支付制度臨床指引申報。2.全身性疾病、六十五歲以上、懷孕婦女或拔牙第三大臼齒病人可依本項申報。全身性疾病包含：(1)符合「全民健康保險牙醫門診總額特殊醫療服務計畫」之適用對象。(2)心臟病必須術前抗生素預防或服用抗凝血劑。(3)服用抗凝血劑療程中。(4)洗腎病人。(5)張口困難(含口腔癌病人)不及2.5公分。(6)曾經接受器官移植病人。(7)凝血障礙或白血球障礙病人。(8)經診斷有糖尿病或高血壓病人。(9)曾經接受頭頸部放射治療或一年內接受過化學治療。(10)愛滋病。(11)免疫性疾病，長期服用類固醇病人。(12)肝硬化及癌症病人。3.需檢附術前X光片以為審核（X光片及局部麻醉費用已內含，「全民健康保險牙醫門診總額特殊醫療服務計畫」之適用對象經安撫無法配合者不在此限）。"}, {"c": "92015C", "clean_c": "92015C", "n": "單純齒切除術", "en": "Simple odontectomy", "p": 2730, "cats": ["拔牙"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.依牙醫門診總額支付制度臨床指引申報。2.包括牙瓣修整術(flap repair)，需檢附Ｘ光片。3.本項目Ｘ光片及局部麻醉費用已內含。4.適用於軟組織阻生齒或阻生齒骨頭覆蓋牙冠未及三分之二者。5.阻生齒含智齒、臼齒、小臼齒、犬齒、門齒、側門齒及贅生齒等。"}, {"c": "92016C", "clean_c": "92016C", "n": "複雜齒切除術", "en": "Complex odontectomy", "p": 4300, "cats": ["拔牙"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.依臨床治療指引相關條文申報。2.包括牙瓣修整術(flap repair)，需檢附Ｘ光片。3.本項目Ｘ光片及局部麻醉費用已內含。"}, {"c": "92017C", "clean_c": "92017C", "n": "囊腫摘除術-小>0.5cm且< 2cm", "en": "Cystic enucleation-Small >0.5cm and < 2cm", "p": 3000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.申報費用應檢附Ｘ光片及病理檢查報告。2.92017C、92018B及92019B等三項支付點數包含局部麻醉及拆線費用在內。3.囊腫應為放射影像學中大於0.5cm radiolucent lesion。"}, {"c": "92018B", "clean_c": "92018B", "n": "囊腫摘除術-中2-4cm", "en": "Cystic enucleation-Medium 2-4cm", "p": 3500, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.申報費用應檢附Ｘ光片及病理檢查報告。2.92017C、92018B及92019B等三項支付點數包含局部麻醉及拆線費用在內。3.囊腫應為放射影像學中大於0.5cm radiolucent lesion。"}, {"c": "92019B", "clean_c": "92019B", "n": "囊腫摘除術-大> 4cm", "en": "Cystic enucleation-Large > 4cm", "p": 5000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.申報費用應檢附Ｘ光片及病理檢查報告。2.92017C、92018B及92019B等三項支付點數包含局部麻醉及拆線費用在內。3.囊腫應為放射影像學中大於0.5cm radiolucent lesion。"}, {"c": "92020B", "clean_c": "92020B", "n": "口內軟組織腫瘤切除", "en": "Excision of soft tissue tumor in oral cavity", "p": 1800, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.淋巴切除(lymphadectomy)比照申報。2.本項支付點數包含局部麻醉及拆線費用在內。3.應附病理報告。"}, {"c": "92021B", "clean_c": "92021B", "n": "軟組織切片", "en": "Biopsy, soft tissue", "p": 1000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.本項支付點數包含局部麻醉及拆線費用在內。 2.應附病理報告。"}, {"c": "92022B", "clean_c": "92022B", "n": "硬組織切片", "en": "Biopsy, hard tissue", "p": 2000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.本項支付點數包含局部麻醉及拆線費用在內。 2.應附病理報告。"}, {"c": "92023B", "clean_c": "92023B", "n": "囊腫造袋術", "en": "Marsupialization", "p": 3020, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "本項支付點數包含局部麻醉及拆線費用在內。"}, {"c": "92024B", "clean_c": "92024B", "n": "瘻管切除術", "en": "Fistulectomy", "p": 800, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：病歷上應載明清楚瘻管位置、病因及處置方式。"}, {"c": "92025B", "clean_c": "92025B", "n": "腐骨清除術-簡單,三分之一顎以下", "en": "Sequestrectomy─Simple, involving less than 1/3 arch", "p": 2010, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.申報費用應檢附Ｘ光片。2.本項支付點數包含局部麻醉及拆線費用在內。"}, {"c": "92026B", "clean_c": "92026B", "n": "腐骨清除術-複雜,三分之一顎以上", "en": "Sequestrectomy-Complex, involving more than 1/3 arch", "p": 3010, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.申報費用應檢附Ｘ光片。2.本項支付點數包含局部麻醉及拆線費用在內。"}, {"c": "92027C", "clean_c": "92027C", "n": "齦蓋切除術", "en": "Operculectomy", "p": 510, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "需附術前Ｘ光片或相片以為審核（Ｘ光片或相片及局部麻醉費用已內含）。"}, {"c": "92028C", "clean_c": "92028C", "n": "繫帶切除術－ 簡單法", "en": "Frenectomy-Simple", "p": 410, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "本項目局部麻醉費用已內含。"}, {"c": "92029C", "clean_c": "92029C", "n": "繫帶切除術－ Ｚ字法", "en": "Frenectomy-Z-plasty", "p": 570, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "本項目局部麻醉費用已內含。"}, {"c": "92030C", "clean_c": "92030C", "n": "前齒根尖切除術", "en": "Apicoectomy：incisors and canines", "p": 1800, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.需附術前及術後Ｘ光片以為審核(Ｘ光片及局部麻醉費用已內含)。2.同一醫療院所二年內不得再申報此項。"}, {"c": "92031C", "clean_c": "92031C", "n": "小臼齒根尖切除術", "en": "Apicoectomy：premolars", "p": 2800, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.需附術前及術後Ｘ光片以為審核(Ｘ光片及局部麻醉費用已內含)。2.同一醫療院所二年內不得再申報此項。"}, {"c": "92032C", "clean_c": "92032C", "n": "大臼齒根尖切除術", "en": "Apicoectomy：molars", "p": 4000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.需附術前及術後Ｘ光片以為審核(Ｘ光片及局部麻醉費用已內含)。2.同一醫療院所二年內不得再申報此項。"}, {"c": "92033C", "clean_c": "92033C", "n": "牙齒切半術或牙根切斷術", "en": "Hemisection or root amputation", "p": 1500, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "需附術前及術後Ｘ光片以為審核(Ｘ光片及局部麻醉費用已內含)。"}, {"c": "92034B", "clean_c": "92034B", "n": "口竇瘻管／ 相通修補術", "en": "Repair oro-antral fistula or communication", "p": 5710, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.本項支付點數包含局部麻醉及拆線費用在內。2.需檢附X光片或相片佐證。"}, {"c": "92035B", "clean_c": "92035B", "n": "神經撕除法", "en": "Neurectomy", "p": 1200, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92036B", "clean_c": "92036B", "n": "口內植皮", "en": "Skin or mucosal grafts for intraoral defects", "p": 2400, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92037B", "clean_c": "92037B", "n": "涎石切除術，在腺管中", "en": "Sialolithotomy, within duct", "p": 2010, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "本項支付點數包含局部麻醉及拆線費用在內。"}, {"c": "92038B", "clean_c": "92038B", "n": "皮瓣手術  － 小（未滿四平方公分）", "en": "Flap repair", "p": 720, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92039B", "clean_c": "92039B", "n": "皮瓣手術  － 中（四至十六平方公分）", "en": "Flap repair", "p": 2000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92040B", "clean_c": "92040B", "n": "皮瓣手術  － 大（十六平方公分以上）", "en": "Flap repair", "p": 3200, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92041C", "clean_c": "92041C", "n": "齒槽骨成形術(二分之一顎以內)", "en": "Alveoloplasty, involving less than 1/2 arch", "p": 570, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "需檢附術前Ｘ光片或照片以為審核（Ｘ光片、照片及局部麻醉費用已內含）。"}, {"c": "92042C", "clean_c": "92042C", "n": "齒槽骨成形術(二分之一顎以上)", "en": "Alveoloplasty, involving more than 1/2 arch", "p": 1070, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "需檢附術前Ｘ光片或照片以為審核（Ｘ光片、照片及局部麻醉費用已內含）。"}, {"c": "92043C", "clean_c": "92043C", "n": "顳顎關節脫臼整復－ 無固定", "en": "Closed reduction of TMJ dislocation-Without fixation", "p": 310, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.年度第一次可申報此項，第二次後只限申報92001C。2.申報費用應檢附手術記錄。3.本項目局部麻醉費用已內含。"}, {"c": "92044B", "clean_c": "92044B", "n": "顳顎關節脫臼整復－ 有固定", "en": "Closed reduction of TMJ dislocation-With fixation", "p": 2010, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.申報費用應檢附手術記錄。2.本項目局部麻醉費用已內含。"}, {"c": "92045B", "clean_c": "92045B", "n": "自體牙齒移植", "en": "Tooth autotransplantation", "p": 4020, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.需檢附術前Ｘ光片以為審核(局部麻醉費用已內含)。2.含拔牙至固定為止。"}, {"c": "92046A", "clean_c": "92046A", "n": "酒精注射", "en": "Alchohol injection", "p": 300, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92047B", "clean_c": "92047B", "n": "顎關節內注射", "en": "Intra-articular injection of temporomandibular joint", "p": 600, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92048A", "clean_c": "92048A", "n": "唾液腺導管", "en": "Salivary gland catheterization", "p": 200, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92049B", "clean_c": "92049B", "n": "黏膜下注射", "en": "Submucosal injection", "p": 400, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92050C", "clean_c": "92050C", "n": "埋伏齒露出手術", "en": "Surgical exposure of impacted tooth", "p": 970, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.限骨性埋伏齒即骨頭覆蓋三分之二以上者。2.僅限永久齒，同顆處置以一次為限。3.需檢附Ｘ光片以為審核（Ｘ光片及局部麻醉費用已內含）。"}, {"c": "92051B", "clean_c": "92051B", "n": "塗氟", "en": "Full mouth fluoride application", "p": 500, "cats": [], "ages": [], "common_conds": [], "other_conds": ["頭頸部"], "sn": "", "nt": "1.限頭頸部病人電療開始進行後施行申報。2.含材料費。"}, {"c": "92052B", "clean_c": "92052B", "n": "閉塞器裝置或手術導引板治療", "en": "Obturator / Surgical splint therapy", "p": 5000, "cats": [], "ages": [], "common_conds": ["惡性腫瘤", "癌"], "other_conds": [], "sn": "", "nt": "1.限顎骨齒列外傷、顎部手術及癌症或腫瘤病人手術後處理2.含材料費"}, {"c": "92053B", "clean_c": "92053B", "n": "硬式咬合板治療", "en": "Occlusal bite splint therapy", "p": 4000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.為同一療程，含診斷、所有處置、日後調整費及材料費。2.病歷應詳實記載處置過程並附術後照片（照片費用內含）。3.一年內不得重複申報本項。"}, {"c": "92054B", "clean_c": "92054B", "n": "軟性咬合器治療", "en": "Soft splint therapy", "p": 800, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "含材料費"}, {"c": "92055C", "clean_c": "92055C", "n": "乳牙拔除", "en": "Primary tooth extration extraction", "p": 260, "cats": ["兒牙", "拔牙"], "ages": ["未滿十二歲"], "common_conds": [], "other_conds": [], "sn": "", "nt": "本項目局部麻醉費用已內含。"}, {"c": "92056C", "clean_c": "92056C", "n": "骨瘤切除術＜ 1 cm", "en": "Excision of Bone tumor, ＜1 cm", "p": 5010, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.需檢附Ｘ光片、病理檢查報告及手術記錄於病歷上以為審核（Ｘ光片及局部麻醉費用已內含）。2.torus之切除應檢附術前照片(規格需為3*5吋以上且可清晰判讀)舉證影響口腔功能。"}, {"c": "92057C", "clean_c": "92057C", "n": "骨瘤切除術", "en": "Excision of Bone tumor, 1 cm≦Bone tumor≦2 cm", "p": 10010, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.需檢附Ｘ光片、病理檢查報告及手術記錄於病歷上以為審核（Ｘ光片及局部麻醉費用已內含）。2.torus之切除應檢附術前照片(規格需為3*5吋以上且可清晰判讀)舉證影響口腔功能。"}, {"c": "92058C", "clean_c": "92058C", "n": "骨瘤切除術＞ 2 cm", "en": "Excision of Bone tumor, ＞2 cm", "p": 15010, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.需檢附Ｘ光片、病理檢查報告及手術記錄於病歷上以為審核（Ｘ光片及局部麻醉費用已內含）。2.torus之切除應檢附術前照片(規格需為3*5吋以上且可清晰判讀)舉證影響口腔功能。"}, {"c": "92059C", "clean_c": "92059C", "n": "手術去除陷入上顎竇內牙齒或異物", "en": "Surgical removal of tooth or foreign body within the maxillary sinus", "p": 6010, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.需檢附Ｘ光片及手術記錄於病歷上以為審核（Ｘ光片及局部麻醉費用已內含）。2.限不同醫師執行。"}, {"c": "92060B", "clean_c": "92060B", "n": "手術用固定用焊鉤", "en": "Surgical hooks for IMF", "p": 2000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.限非美容為目的之診療。2.每個案上下顎各施行乙次為原則。3.已包含處置費、材料費及術後調整費用。4.個案需經事前審查同意後方可實施。"}, {"c": "92061B", "clean_c": "92061B", "n": "矯正後之活動維持裝置(每顎)", "en": "Space retainer treatment per jaw", "p": 2000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.限非美容為目的之診療。2.每個案上下顎各施行乙次為原則。3.巳包含處置費、材料費及術後調整費用。4.個案需經事前審查同意後方可實施。"}, {"c": "92062C", "clean_c": "92062C", "n": "唾液腺管沖洗", "en": "Salivary duct irrigation", "p": 150, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92063C", "clean_c": "92063C", "n": "手術拔除深部阻生齒", "en": "Surgical removal of a deeply impacted tooth in jaw bone", "p": 8970, "cats": ["拔牙"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.符合以下四者狀況之一者，得申報此項。(1)上、下顎完全骨性阻生齒牙冠最低處低於鄰牙之根尖。(2)上、下顎骨完全骨性阻生齒牙冠最深處低於齒槽骨脊下1.5公分者，或下顎骨完全骨性阻生齒牙冠最深處距下顎骨邊緣垂直高度小於二分之一者。(3)下顎骨完全骨性阻生齒第三大臼齒處之後臼齒空間retromolar space(臨近下顎臼齒，其臨床牙冠最近心點至最遠心點為參考寛度及寛度參考點，以兩點為一直線，直線碰至下顎骨上升枝前緣為距離參考線)小於第二大臼齒近遠心寬度三分之一，且阻生齒牙冠最上緣低於鄰牙距離參考線者。(4)下顎骨完全骨性阻生齒第三大臼齒處之後臼齒空間retromolar space(臨近下顎臼齒，其臨床牙冠最近心點至最遠心點為參考寛度及寛度參考點，以兩點為一直線，直線碰至下顎骨上升枝前緣為距離參考線)小於阻生齒牙冠寬度三分之一，且阻生齒牙冠三分之二位居上升枝內者。2.須檢附Panoramic radiography環口全景X光片攝影及手術紀錄於病歷上以為審核（Ｘ光片及局部麻醉費用已內含）。3.本項支付點數內含單次使用鑽頭費，占百分之十一。"}, {"c": "92064C", "clean_c": "92064C", "n": "手術去除解剖間隙內異物或牙齒", "en": "Surgical removal of a tooth or foreign body within fascial spaces", "p": 10510, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.需檢附Ｘ光片及手術記錄於病歷上以為審核（Ｘ光片及局部麻醉費用已內含）。2.限不同醫師執行。"}, {"c": "92065B", "clean_c": "92065B", "n": "口腔顎顏面頸部惡性腫瘤術後照護", "en": "Post-operative care for oral- maxillofacial and neck malignancies", "p": 600, "cats": [], "ages": [], "common_conds": ["惡性腫瘤", "癌"], "other_conds": [], "sn": "", "nt": "註：1.口腔顎顏面頸部惡性腫瘤術後照護及其相關必要措施：a.口腔顎顏面頸部惡性腫瘤術後照護：皮膚的縫線囊腫、皮膚？管、淋巴液漏、皮膚、皮瓣供給處換藥b.無法開刀的癌末患者換藥，如：oro-facial communication、頸部淋巴結轉移導致skin perforationc.電療或化療前口腔評估計畫(pre-RT or pre-CT assessment)d.電療後遺症，ORN照護換藥。2.術後三天同一療程。3.病史、理學檢查，必要時麻醉及X光檢查。（麻醉及X光費用另計）4.不得同時申報92001C、92066C及非牙科處置。"}, {"c": "92066C", "clean_c": "92066C", "n": "特定局部治療", "en": "Specified local treatment", "p": 50, "cats": ["拔牙"], "ages": [], "common_conds": [], "other_conds": ["頭頸部"], "sn": "拔牙後處理可改報92012", "nt": "註：1.阻生齒手術、膺復前手術、頭頸部感染之手術處理、囊腫之手術處理、牙齒再植或移植手術、良性腫瘤（含重建）之手術處理、放射治療之病人、顳顎關節疾病之手術處理、大唾液腺疾病外科處理之術後處理。2.拔牙後乾性齒槽炎、燒燙傷、化學藥物灼傷、扁平苔癬及嚴重之口腔潰瘍。3.牙周病咬合調整，90007C拆除牙冠後填補。4.三天內視為同一療程。"}, {"c": "92067B", "clean_c": "92067B", "n": "癌前病變軟組織切片", "en": "Incisional biopsy for precancerous lesion, soft tissue", "p": 1810, "cats": [], "ages": [], "common_conds": ["癌"], "other_conds": [], "sn": "", "nt": "註：1.本項支付點數包含局部麻醉及拆線費用在內。2.應附病理報告。"}, {"c": "92068B", "clean_c": "92068B", "n": "癌前病變硬軟組織切片", "en": "Incisional biopsy for precancerous lesion, hard tissue", "p": 2510, "cats": [], "ages": [], "common_conds": ["癌"], "other_conds": [], "sn": "", "nt": "註：1.本項支付點數包含局部麻醉及拆線費用在內。2.應附病理報告。"}, {"c": "92069B", "clean_c": "92069B", "n": "複雜型顱顎障礙症之特殊咬合板", "en": "Occlusal bite splint treatment for complicated craniomandibular disorders", "p": 7000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.本項須符合下列顱顎障礙症功能檢查所述適應症中二項（含）以上，且經藥物或其他保守性治療一個月仍無效始得施行。2.適應症：1)下顎運動最大張口距：小於35mm。2)終極試驗：大於5mm或小於1mm。3)顳顎關節雜音之聽診：單或雙側具彈響(clicking sound)或軋髮音(crepitus sound)。4)顳顎關節區觸診：單或雙側有壓痛。5)外翼狀肌之拮抗試驗：單或雙側為「+」。6)咀嚼肌觸診之檢查結果：一個以上肌肉之觸診結果為「+」。3.一年內不得申報92053 B及本項。4.病歷應詳實記載處置過程並附口內配載照片（照片費用內含）。"}, {"c": "92070B", "clean_c": "92070B", "n": "複雜型顱顎障礙症之特殊咬合板治療追蹤檢查與調整", "en": "Follow up examination and the adjustment of occlusal bite splint for complicated craniomandibular disorders", "p": 600, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.須先前有接受複雜型顱顎障礙症之特殊咬合板治療者方得申報本項。2.咬合板臨床調整申報，一百八十天內每三十天得申報一次，一百八十天後每六十天得申報一次。"}, {"c": "92071C", "clean_c": "92071C", "n": "簡單性口內切開排膿", "en": "Simple intraoral incision & drainage", "p": 210, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.腫脹區切開、沖洗，局部麻醉費用已內含。2.限口腔內軟組織膿瘍申報。"}, {"c": "92072C", "clean_c": "92072C", "n": "口乾症塗氟", "en": "Full mouth topical fluoride application in xerostomia patients", "p": 500, "cats": [], "ages": [], "common_conds": ["口乾症"], "other_conds": [], "sn": "", "nt": "1.限口乾症病人施行申報。2.含材料費。3.九十天可申報一次。"}, {"c": "92073C", "clean_c": "92073C", "n": "口腔黏膜難症特別處置", "en": "Management of difficult oral mucosal disease", "p": 600, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.限經臨床特徵或病理報告確診為特殊口腔黏膜難症疾病患者申報。2.每七天申報一次，診斷確立起三百六十天內不得申報超過二十四次。3.病歷應詳實記載並檢附(1)病理切片報告(二年內)或(2)相關血液檢驗報告(二年內)或(3)詳細臨床病歷及當次照片(照片費用已內含)以為審核。4.不得同時申報92001C、92066C處置。"}, {"c": "92088C", "clean_c": "92088C", "n": "口腔顎面外科轉出醫療院所之轉診費用", "en": "Referral fee for oral maxillofacial surgery", "p": 200, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.交付病人牙醫醫療院所轉診單，且病歷應記載。2.提供病人或家屬相關諮詢及轉出病歷摘要(不包含X光片)。3.此項不得申請轉診加成。"}, {"c": "92089B", "clean_c": "92089B", "n": "氟托(單顎)", "en": "Fluoride tray/per jaw", "p": 1500, "cats": [], "ages": [], "common_conds": ["惡性腫瘤", "癌"], "other_conds": ["頭頸部"], "sn": "", "nt": "註：1.限頭頸部癌症病患放射性治療後施行申報 。2.需經印模後以乙烯-乙烯聚合醇共聚物(Ethylene-vinyl Copolymer)材質客製化氟托 。3.一年內不得重覆申報本項。"}, {"c": "92090C", "clean_c": "92090C", "n": "定期性口腔癌與癌前病變追蹤治療", "en": "Periodic care for oral cancer or oral potentially malignant disorder (PMD)", "p": 600, "cats": [], "ages": [], "common_conds": ["癌"], "other_conds": [], "sn": "", "nt": "註：1.須附二年內病理切片報告或病歷載明詳細病史(照片)，且經確診為頭頸口腔癌或癌前病變(PMD)患者，癌前病變臨床診斷類別(ICD-10-CM)：紅斑(K13.29)、白斑(K13.21、K13.3)、疣狀增生(K13.29)、口腔黏膜纖維化(K13.5)、扁平苔癬(L43.0-L43.9、L66.1)。2.不得與「非定期性口腔癌與癌前病變追蹤治療(92091C)」同時申報。3.病歷應詳實記載追蹤治療紀錄。4.應含口腔清潔維護治療(包括視情況移除口腔內尖銳牙齒結構填補物、不良補綴物、癌前病變清除維護等)。5.應含嚼檳榔、抽菸、喝酒等不良習慣（致癌因子）之戒除輔導。6.滿六十天得申報一次；若距前次追蹤治療(92090C或92091C)時間已超過一百八十天者，則以「非定期性口腔癌與癌前病變追蹤治療(92091C)」申報。"}, {"c": "92091C", "clean_c": "92091C", "n": "非定期性口腔癌與癌前病變追蹤治療", "en": "Occasional care for oral cancer or oral potentially malignant disorder (PMD)", "p": 400, "cats": [], "ages": [], "common_conds": ["癌"], "other_conds": [], "sn": "", "nt": "註：1.不得與「定期性口腔癌與癌前病變追蹤治療(92090C)」同時申報。2.須附二年內病理切片報告或病歷載明詳細病史(照片)，且經確診為頭頸口腔癌或癌前病變(PMD)患者，癌前病變臨床診斷類別(ICD-10-CM)：紅斑(K13.29)、白斑(K13.21、K13.3)、疣狀增生(K13.29)、口腔黏膜纖維化(K13.5)、扁平苔癬(L43.0-L43.9、L66.1)。3.病歷應詳實記載追蹤治療紀錄。4.應含口腔清潔維護治療(包括視情況移除口腔內尖銳牙齒結構填補物、不良補綴物、癌前病變清除維護等)。5.應含嚼檳榔、抽菸、喝酒等不良習慣（致癌因子）之戒除輔導。6.本項適用距前次追蹤治療(92090C或92091C)時間超過一百八十天者申報。"}, {"c": "92092C", "clean_c": "92092C", "n": "乳牙複雜性拔牙", "en": "Complex extraction of primary tooth", "p": 560, "cats": ["兒牙", "拔牙"], "ages": ["未滿十二歲"], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": [], "sn": "", "nt": "註：1.限乳牙申報。2.適應症包含：(1)全身性疾病(同92014C複雜性拔牙)。(2)乳牙牙根大於二分之一。(3)恆牙異位萌發造成乳牙無法正常換牙。(4)牙根骨黏合或submerged tooth。(5)外傷合併其它口內或嘴唇周圍的傷口。(6)併生牙(fusion)。(7)乳牙牙根彎曲。(8)因外傷或齲齒造成之牙根斷裂。(9)因外傷造成之牙齒牙齦內推(intrusion)。3.需檢附術前X光片以為審核（X光片及局部麻醉費用已內含，「全民健康保險牙醫門診總額特殊醫療服務計畫」之適用對象，無法配合照射X光片者不在此限）。"}, {"c": "92093B", "clean_c": "92093B", "n": "牙醫急症處置-每次門診限申報一次", "en": "Management of dental emergencies", "p": 1500, "cats": ["急診/外傷"], "ages": [], "common_conds": [], "other_conds": [], "sn": "1.假日值班可併報92133
+2.牙齒復位可改報92096
+3.有顏面部撕裂傷可併報48022~24, 48033~35擇一", "nt": "1.適應症：(1)顏面及牙齒疼痛，經藥物控制不佳者(ICD-10-CM：K03.81, K04.1-K04.99,K05.0-,K05.2-)。-ICD-10-CM(2023年版)：K03.81, K04.01, K04.02, K04.1-K04.99, K05.0-, K05.2-(自一百十四年一月一日起適用)。(2)外傷導致之牙齒斷裂(ICD-10-CM：S02.5-)。(3)拔牙、腫瘤、手術後等口腔出血(ICD-10-CM：K91.840)。-ICD-10-CM(2023年版)：K91.840, K91.870, K91.872 (自一百十四年一月一日起適用)。(4)下顎關節脫臼(ICD-10-CM：S03.0-)。(5)顏面與口腔間隙蜂窩性組織炎(ICD-10-CM：K12.2, L03.221, L02.01,L03.211, L03.212)。(6)口腔及顏面撕裂傷(ICD-10-CM：S01.4-, S01.5-)。2.進行緩解之相關處置：如止痛、局部非特定處理、齒內治療緊急處理、牙周緊急處理、止血。3.需檢附檢傷分類等級、生命徵象(血壓、心跳速率、呼吸速率)與意識狀況( Glasgow coma score)等護理紀錄。4.不得同時申報34001C、34002C、90004C、91001C、92001C、92012C、92043C、 92066C、92071C、92094C、92096C。"}, {"c": "92094C", "clean_c": "92094C", "n": "週六、日及國定假日牙醫門診急症處置-每次門診限申報一次", "en": "Management of dental emergencies on Saturdays, Sundays or in the national holidays", "p": 800, "cats": ["急診/外傷"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.限週六、日及國定假日申報，國定假日日期認定同附表3.3.3牙醫相對合理門診點數給付原則。2.當月看診天數需於二十六日以內，超過二十六日則本項不予支付(排除當天僅執行院所外醫療服務之天數)。3.院所需於前一個月於健保資訊網服務系統(VPN)完成當月門診時間登錄，始得申報本項目。（前一個月完成次月看診時段之登錄，若有異動者須修訂看診起日及時段並儲存，無異動者僅須點選「儲存」後，會自動完成登錄註記。）4.適應症：(1)顏面及牙齒疼痛，經藥物控制不佳者(ICD-10-CM：K03.81,K04.1-K04.99,K05.0-,K05.2-)。-ICD-10-CM(2023年版)：K03.81, K04.01, K04.02, K04.1-K04.99, K05.0-, K05.2-(自一百十四年一月一日起適用)。(2)外傷導致之牙齒斷裂(ICD-10-CM：S02.5-)。(3)拔牙、腫瘤、手術後等口腔出血(ICD-10-CM：K91.840)。-ICD-10-CM(2023年版)：K91.840, K91.870, K91.872 (自一百十四年一月一日起適用)。(4)下顎關節脫臼(ICD-10-CM：S03.0-)。(5)顏面與口腔間隙蜂窩性組織炎(ICD-10-CM：K12.2, L03.221, L02.01, L03.211, L03.212)。(6)口腔及顏面撕裂傷(ICD-10-CM：S01.4-, S01.5-)。5.進行緩解之相關處置：如止痛、局部非特定處理、齒內治療緊急處理、牙周緊急處理、止血。6.不得同時申報34001C、34002C、90004C、91001C、92001C、92012C、92043C、92066C、92071C、92093B、92096C，且同象限、同牙位不得同時與其他非緊急處置醫令合併申報(96001C、90088C、91088C、92088C、P3601C除外)。"}, {"c": "92095C", "clean_c": "92095C", "n": "顎顏面骨壞死術後傷口照護", "en": "Wound care for osteonecrosis of jaws", "p": 600, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.需有病理學報告或相關影像佐證。2.三日內之同一處置視為同一療程。"}, {"c": "92096C", "clean_c": "92096C", "n": "牙齒外傷急症處理", "en": "", "p": 4976, "cats": ["急診/外傷"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.限恆牙完成牙齒復位與固定後申報。內含齒槽骨復位、傷口清創、軟組織止血與縫合費用。2.適應症：外傷導致之牙齒脫落或脫位(S03.2, S02.42, S02.67)。3.應檢附術前術後X光片或照片。4.不得同時申報89006C、90004C、92002C、92093B、92094C。5.限經中華民國牙醫師公會全國聯合會審查後，報經保險人分區業務組核定之院所申報。"}, {"c": "92097C", "clean_c": "92097C", "n": "顱顎關節障礙特殊檢查費-初診", "en": "Special evaluation for craniomandibular disorders-first visit", "p": 1000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.申報費用時，須附顱顎關節障礙初診特殊檢查表。2.每三年限申報一次。"}, {"c": "92098C", "clean_c": "92098C", "n": "顱顎關節障礙特殊檢查費-複診", "en": "Special evaluation for craniomandibular disorders-return visit", "p": 500, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.申報費用時，須附顱顎關節障礙複診特殊檢查表。2.每三十天限申報一次。3.病歷抽審應附六個月內檢查表備查。"}, {"c": "92099B", "clean_c": "92099B", "n": "單側顱顎關節障礙乾針治療", "en": "Dry needling for craniomandibular disorders", "p": 500, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.應檢附術前一年內顱顎關節障礙初診特殊檢查表或顱顎關節障礙複診特殊檢查表。2.每十四天限申報一次。"}, {"c": "92100B", "clean_c": "92100B", "n": "單側顱顎關節沖洗", "en": "Arthrocentesis of the temporomandibular joint", "p": 1400, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.應檢附術前一年內顱顎關節障礙初診特殊檢查表或顱顎關節障礙複診特殊檢查表。2.限開口障礙使用。3.每三十天限申報一次。"}, {"c": "92101B", "clean_c": "92101B", "n": "矯正檢查，部分（口腔檢查．石膏模型．照相）（次）", "en": "Orthodontic Examination, Partial (dental check-up, dental cast, intraoral and extraoral photography)", "p": 1690, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.先天唇顎裂疾病患者牙醫醫療服務給付試辦．2.計畫實施本項檢查不需要事前審查，惟限一至三歲病童有治療需要者，最多申報五次（建議實施期間為初次門診．三個月．六個月．一歲及三歲）．"}, {"c": "92102B", "clean_c": "92102B", "n": "矯正檢查（口腔檢查．石膏模型．照相．測顱Ｘ光．全景Ｘ光）（次）", "en": "Orthodontic Examination, Total (dental check-up, dental cast, intraoral and extraoral photography, panoramic radiography, cephalometric radiography (lateral and posterioanterior views)", "p": 3000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.先天唇顎裂疾病患者牙醫醫療服務給付試辦．2.計畫實施本項檢查不需要事前審查，惟限三歲以上病童有治療需要者，每一年六個月限施行乙次．"}, {"c": "92103B", "clean_c": "92103B", "n": "活動牙齒矯正裝置（單顎）", "en": "Removable orthodontic appliance (one jaw)", "p": 4806, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "先天唇顎裂疾病患者牙醫醫療服務給付試辦計畫支付項目．"}, {"c": "92104B", "clean_c": "92104B", "n": "活動牙齒矯正裝置（雙顎）", "en": "Removable orthodontic appliance (two jaws)", "p": 7209, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "先天唇顎裂疾病患者牙醫醫療服務給付試辦計畫支付項目．"}, {"c": "92105B", "clean_c": "92105B", "n": "空間維持器（單側），固定或活動式", "en": "Space maintainer, unilateral", "p": 1500, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.先天唇顎裂疾病患者牙醫醫療服務給付試辦計畫支付項目．2.限上下顎各施行乙次為原則．"}, {"c": "92106B", "clean_c": "92106B", "n": "空間維持器（雙側），固定或活動式", "en": "Space maintainer, bilateral", "p": 2500, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.先天唇顎裂疾病患者牙醫醫療服務給付試辦計畫支付項目．2.限上下顎各施行乙次為原則．"}, {"c": "92107B", "clean_c": "92107B", "n": "單齒矯正裝置及直接粘著裝置", "en": "Orthodontic band or direct bonding bracket, single tooth", "p": 800, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "先天唇顎裂疾病患者牙醫醫療服務給付試辦計畫支付項目．"}, {"c": "92108B", "clean_c": "92108B", "n": "環鉤，彈力線或唇面弧線，每件", "en": "Clasp, Finger spring or labial arch, per piece", "p": 348, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "先天唇顎裂疾病患者牙醫醫療服務給付試辦計畫支付項目．"}, {"c": "92109B", "clean_c": "92109B", "n": "亞克力基底板", "en": "Acrylic plate", "p": 2000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "先天唇顎裂疾病患者牙醫醫療服務給付試辦計畫支付項目．"}, {"c": "92110B", "clean_c": "92110B", "n": "咬合板或斜面板", "en": "Bite plate or inclined plate", "p": 1867, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "先天唇顎裂疾病患者牙醫醫療服務給付試辦計畫支付項目．"}, {"c": "92111B", "clean_c": "92111B", "n": "矯正調整及矯正追蹤簡檢查（次）", "en": "Orthodontic adjustment", "p": 1000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "先天唇顎裂疾病患者牙醫醫療服務給付試辦計畫支付項目．1.以每三個月實施乙次為限。2.不得與92115B~92124B項目合併申報"}, {"c": "92112B", "clean_c": "92112B", "n": "面罩Ａ", "en": "Facial mask A", "p": 12476, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "１．先天唇顎裂疾病患者牙醫醫療服務給付試辦計畫支付項目．　　２．面罩Ａ指混合牙期或恆牙期病情須要使用於顎骨延長術（ＤＩＳＴＲＡＣＴＩＯＮ　ＯＳＴＥＯＧＥＮＥＳＩＳ）之裝置"}, {"c": "92113B", "clean_c": "92113B", "n": "面罩Ｂ", "en": "Facial mask B", "p": 3748, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.先天唇顎裂疾病患者牙醫醫療服務給付試辦計畫支付項目．2.面罩Ｂ指混合牙期或恆牙期病情須要使用於上顎及下顎齒列前移之面罩"}, {"c": "92114B", "clean_c": "92114B", "n": "顎弓擴大器", "en": "Palatal expansion appliance", "p": 6259, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "先天唇顎裂疾病患者牙醫醫療服務給付試辦計畫支付項目．"}, {"c": "92115B", "clean_c": "92115B", "n": "恆牙期牙齒矯正（單顎）第一次給付", "en": "Orthodontic treatment in permanent dentition (one jaw)", "p": 6631, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "先天唇顎裂疾病患者牙醫醫療服務給付試辦計畫支付項目．註：1.恆牙期牙齒矯正各次給付中，不得另行申報基本及選擇性診療項目。2.第一次給付申報時間及基本、選擇性診療項目如下：(1)申報時間：事前審查經本署同意後，至完成裝置矯正器。(2)基本診療項目：單顎或雙顎固定帶環裝置。(3)選擇性診療項目：面罩B、顎弓擴大器、因診療必須之拔牙。(4)申報醫療費用時應檢附病歷影本作為審查依據。3. 內含92111B矯正調整及追蹤檢查費用。"}, {"c": "92116B", "clean_c": "92116B", "n": "恆牙期牙齒矯正（雙顎）第一次給付", "en": "Orthodontic treatment in permanent dentition (two jaws)", "p": 12000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.先天唇顎裂疾病患者牙醫醫療服務給付試辦計畫支付項目．2.恆牙期牙齒矯正各次給付中，不得另行申報基本及選擇性診療項目3.第一次給付申報時間及基本．選擇性診療項目如下：.（１）申報時間：事前審查經本署同意後至完成裝置矯正器.（２）基本診療項目：單顎或雙顎固定帶環裝置.（３）選擇性診療項目：面罩Ｂ．顎弓擴大器．因診療必須之拔牙.（４）申報醫療費用時應檢附病歷影本作為審查依據.3. 內含92111B矯正調整及追蹤檢查費用。"}, {"c": "92117B", "clean_c": "92117B", "n": "恆牙期牙齒矯正（單顎）第二次給付", "en": "Orthodontic treatment in permanent dentition (one jaw)", "p": 4973, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.恆牙期牙齒矯正各次給付中，不得另行申報基本及選擇性診療項目。2.申報時間、基本診療項目如下：(1)申報時間：第一次給付後160天。(2)基本診療項目：6次以上矯正調整。(3)申報醫療費用時應檢附病歷影本，並標示第1次給付申報日期作為審查依據。(4)內含92111B矯正調整及追蹤檢查費用。"}, {"c": "92118B", "clean_c": "92118B", "n": "恆牙期牙齒矯正（雙顎）第二次給付", "en": "Orthodontic treatment in permanent dentition (two jaws)", "p": 7236, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.恆牙期牙齒矯正各次給付中，不得另行申報基本及選擇性診療項目。2.申報時間、基本診療項目如下：(1)申報時間：第一次給付後160天。(2)基本診療項目：6次以上矯正調整。(3)申報醫療費用時應檢附病歷影本，並標示第1次給付申報日期作為審查依據。(4)內含92111B矯正調整及追蹤檢查費用。"}, {"c": "92119B", "clean_c": "92119B", "n": "恆牙期牙齒矯正（單顎）第三次給付", "en": "Orthodontic treatment in permanent dentition (one jaw)", "p": 4973, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.恆牙期牙齒矯正各次給付中，不得另行申報基本及選擇性診療項目。2.申報時間、基本診療項目如下：(1)申報時間：第二次給付後160天。(2)基本診療項目：6次以上矯正調整。(3)申報醫療費用時應檢附病歷影本，並標示第2次給付申報日期作為審查依據。(4)內含92111B矯正調整及追蹤檢查費用。"}, {"c": "92120B", "clean_c": "92120B", "n": "恆牙期牙齒矯正（雙顎）第三次給付", "en": "Orthodontic treatment in permanent dentition (two jaws)", "p": 7236, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.恆牙期牙齒矯正各次給付中，不得另行申報基本及選擇性診療項目。2.申報時間、基本診療項目如下：(1)申報時間：第二次給付後160天。(2)基本診療項目：6次以上矯正調整。(3)申報醫療費用時應檢附病歷影本，並標示第2次給付申報日期作為審查依據。(4)內含92111B矯正調整及追蹤檢查費用。"}, {"c": "92121B", "clean_c": "92121B", "n": "恆牙期牙齒矯正（單顎）第四次給付", "en": "Orthodontic treatment in permanent dentition (one jaw)", "p": 6631, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.恆牙期牙齒矯正各次給付中，不得另行申報基本及選擇性診療項目。2.申報時間、基本診療項目如下：(1)申報時間：第三次給付後160天。(2)基本診療項目：6次以上矯正調整。(3)申報醫療費用時應檢附病歷影本，並標示第3次給付申報日期作為審查依據。(4)內含92111B矯正調整及追蹤檢查費用。"}, {"c": "92122B", "clean_c": "92122B", "n": "恆牙期牙齒矯正（雙顎）第四次給付", "en": "Orthodontic treatment in permanent dentition (two jaws)", "p": 9648, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.恆牙期牙齒矯正各次給付中，不得另行申報基本及選擇性診療項目。2.申報時間、基本診療項目如下：(1)申報時間：第三次給付後160天。(2)基本診療項目：6次以上矯正調整。(3)申報醫療費用時應檢附病歷影本，並標示第3次給付申報日期作為審查依據。(4)內含92111B矯正調整及追蹤檢查費用。"}, {"c": "92123B", "clean_c": "92123B", "n": "恆牙期牙齒矯正（單顎）第五次給付", "en": "Orthodontic treatment in permanent dentition (one jaw)", "p": 9946, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "先天唇顎裂疾病患者牙醫醫療服務給付試辦計畫支付項目．註：申報時間、基本診療項目及完成治療之臨床表徵如下：1.申報時間：第四次給付後至完成治療。2.基本診療項目：(1)矯正調整至完成治療。(2)完成治療配戴維持器。3.完成治療之臨床表徵：(1)齒列排列整齊，穩定咬合。(2)前牙無倒咬或開咬情形。(3)唇顎裂牙床裂縫旁牙齒之間隙關閉或改善。4.申報第五次醫療費用時應檢附Ｘ光片或照片作為審查依據。5. 內含92111B矯正調整及追蹤檢查費用。"}, {"c": "92124B", "clean_c": "92124B", "n": "恆牙期牙齒矯正（雙顎）第五次給付", "en": "Orthodontic treatment in permanent dentition (two jaws)", "p": 15000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "先天唇顎裂疾病患者牙醫醫療服務給付試辦計畫支付項目．註：申報時間、基本診療項目及完成治療之臨床表徵如下：1.申報時間：第四次給付後至完成治療。2.基本診療項目：(1)矯正調整至完成治療。(2)完成治療配戴維持器。3.完成治療之臨床表徵：(1)齒列排列整齊，穩定咬合。(2)前牙無倒咬或開咬情形。(3)唇顎裂牙床裂縫旁牙齒之間隙關閉或改善。4.申報第五次醫療費用時應檢附Ｘ光片或照片作為審查依據。5. 內含92111B矯正調整及追蹤檢查費用。"}, {"c": "92125B", "clean_c": "92125B", "n": "正顎手術術前牙版", "en": "Srugical stent for orthognathic surgery", "p": 5000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：適應症範圍唇顎裂及其他顱顏畸形和外傷所造成的骨性咬合不正須正顎手術者，而外傷所造成的骨性咬合不正須合併手術申報"}, {"c": "92126B", "clean_c": "92126B", "n": "唇顎裂嬰兒鼻型齒槽骨矯正治療前印模單側鼻型齒槽骨矯正牙板", "en": "nasoalveolar molding, impression & nasoalveolar molding plate,unilateral", "p": 12000, "cats": [], "ages": ["未滿十二歲"], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.適應症範圍限出生後四個月內之嬰兒且單側唇顎裂鼻翼歪斜併齒槽骨裂隙。2.須檢附治療前後照片與病歷記錄。3.不得與92125B併報。4.經本特殊醫療計畫核備同意院所方可申報。"}, {"c": "92127B", "clean_c": "92127B", "n": "唇顎裂嬰兒鼻型齒槽骨矯正治療前印模雙側鼻型齒槽骨矯正牙板", "en": "nasoalveolar molding, impression & nasoalveolar molding plate,bilateral", "p": 15000, "cats": [], "ages": ["未滿十二歲"], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.適應症範圍限出生後四個月內之嬰兒且雙側唇顎裂鼻翼歪斜併齒槽骨裂隙。2.須檢附治療前後照片與病歷記錄。3.不得與92125B併報。4.經本特殊醫療計畫核備同意院所方可申報"}, {"c": "92128B", "clean_c": "92128B", "n": "鼻型齒槽骨矯正定期調整", "en": "nasoalveolar molding, adjustment", "p": 1000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.適應症範圍限單側唇顎裂鼻翼歪斜併齒槽骨裂隙，及雙側唇顎裂鼻柱塌陷、前顎前突併齒槽骨裂隙。2.須檢附治療前後照片與病歷記錄。3.7日內不得重覆申報。4.同一病例申報次數以8次為上限。5.經本特殊醫療計畫核備同意院所方可申報"}, {"c": "92129B", "clean_c": "92129B", "n": "顎顏面外傷術後初次門診檢查與照護費", "en": "Primary Post-operative Recroding, Care for Maxillofacial Trauma", "p": 2500, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "備註：1.顎顏面外傷病人之診斷至少須包含下列 ICD-10-CM碼之任一項，方得申報：S02.2 Nasal bone fracture，S02.3 Orbital wall fracture，S02.4 Maxilla & malar bone fracture，S02.6 Mandible fracture，S02.8 Skull bone fracture。2.須檢附「顎顏面外傷術後初次門診檢查紀錄與計畫表」、病歷供審查。3.限同一病人於出院後三十天內申報一次，且須檢附手術紀錄及X光片或相片或其他影像佐證。4.不得與89006C、90004C、91001C、91003C、91004C、91103C、91104C、91005C、91017C、92001C、92066C、92130B合併申報。5.本項限牙醫門診申報。"}, {"c": "92130B", "clean_c": "92130B", "n": "顎顏面外傷術後照護費", "en": "Post-operative Care for Maxillofacial Trauma", "p": 1000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "備註：1.須申報92129B後一百八十天內申報。2.口腔顎顏面外傷術後照護，至少須執行下列任一項：(1)口腔黏膜或皮膚傷口清創、黏膜或皮膚瘻管換藥。(2)顎間固定鋼絲與相關固定物調整、咬合調整。(3)牙周腫脹治療與衛生指導。(4)牙齒斷裂相關覆髓或臨時填補治療、牙髓活性測試。(5)張口訓練。3.限出院後一百八十天內申報，同次住院後門診最多能申報十次。三天內屬同一療程。4.不得與89006C、90004C、91001C、91003C、91004C、91103C、91104C、91005C、91017C、92001C、92066C、92129B合併申報。"}, {"c": "92161B", "clean_c": "92161B", "n": "唾液腺摘取術(每部位)", "en": "Salivary gland biopsy", "p": 2000, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.應檢附手術紀錄及病理報告。2.每月限申報二不同部位。"}, {"c": "92201B", "clean_c": "92201B", "n": "單側髁狀突下截骨術或關節成形術", "en": "Subcondylar osteotomy or arthroplasty, unilateral", "p": 9060, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92202B", "clean_c": "92202B", "n": "涎石切除術，在腺體內", "en": "Sialolithotomy, in the gland", "p": 1900, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92203B", "clean_c": "92203B", "n": "髁狀突切除術，單側", "en": "Condylectomy unilateral", "p": 3780, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92204B", "clean_c": "92204B", "n": "造碟術及腐骨清除術", "en": "Saucerization and sequestrectomy", "p": 4160, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92205B", "clean_c": "92205B", "n": "造碟術", "en": "Saucerization", "p": 790, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92206B", "clean_c": "92206B", "n": "髁狀突骨折手術復位術、單側", "en": "Open reduction of condylar fracture, unilateral", "p": 6260, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92207B", "clean_c": "92207B", "n": "補顎術", "en": "Palatoplasty", "p": 3792, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92208B", "clean_c": "92208B", "n": "顴骨弓骨折整復術", "en": "Reduction of zygomatic arch", "p": 2610, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92209B", "clean_c": "92209B", "n": "顎骨折整復術 － 單一骨折", "en": "Open Reduction of the jaw bone fracture－Simple", "p": 4130, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92210B", "clean_c": "92210B", "n": "顎骨折整復術 － 複雜骨折", "en": "Open Reduction of the jaw bone fracture－Complicated", "p": 5700, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92211B", "clean_c": "92211B", "n": "顎骨切除術、邊緣切除", "en": "Resection of the jaw (each), marginal", "p": 4410, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92212B", "clean_c": "92212B", "n": "顎骨切除術部份切除", "en": "Resection of the jaw (each), partial", "p": 7020, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92213B", "clean_c": "92213B", "n": "顎骨切除術、半切除", "en": "Resection of the jaw (each), hemi-resection", "p": 7020, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "全切除比照筋骨手術收費申報"}, {"c": "92214B", "clean_c": "92214B", "n": "顎骨重建術、骨移植", "en": "Reconstruction of the jaw by bone grafting", "p": 7730, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92215B", "clean_c": "92215B", "n": "顎骨重建術、金屬夾板（材料另計）", "en": "Reconstruction of the jaw by bridging plate", "p": 4850, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92218B", "clean_c": "92218B", "n": "唾液腺切除術 － 表淺或良性", "en": "Sialoadenectomy－Superficial or benign", "p": 2470, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92219B", "clean_c": "92219B", "n": "唾液腺切除術 － 惡性", "en": "Sialoadenectomy－Malignant", "p": 4120, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92220B", "clean_c": "92220B", "n": "末梢神經抽除術", "en": "Peripheral neurectomy", "p": 3160, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92221B", "clean_c": "92221B", "n": "下齒槽神經抽除術", "en": "Peripheral neurectomy：inferior alveolar nerve", "p": 3780, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92222B", "clean_c": "92222B", "n": "顳顎關節脫臼手術整復", "en": "Open reduction for TMJ dislocation", "p": 2750, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "92223A", "clean_c": "92223A", "n": "顎骨矯正手術-合併上、下顎骨切除術或Le Fort Ⅲ型切骨術", "en": "Orthognathic surgery-Two jaw surgery or Le Fort Ⅲ Osteotomy", "p": 9270, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "(92223A-92225A)限先天性臉部疾病、或肌病變導致畸形及咬合不正、外傷、及顎骨關節病變患者，事前審查報准後施行。"}, {"c": "92224A", "clean_c": "92224A", "n": "顎骨矯正手術-單顎或二處", "en": "Orthognathic surgery-One jaw or two sites", "p": 7730, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.(92223A-92225A)限先天性臉部疾病、或肌病變導致畸形及咬合不正、外傷、及顎骨關節病變患者，事前審查報准後施行。2.一般材料費及單次使用鑽頭、鑽針，得另加計百分之七十八。"}, {"c": "92225A", "clean_c": "92225A", "n": "顎骨矯正手術-一處", "en": "Orthognathic surgery-Single site", "p": 5410, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "(92223A-92225A)限先天性臉部疾病、或肌病變導致畸形及咬合不正、外傷、及顎骨關節病變患者，事前審查報准後施行。"}, {"c": "92229B", "clean_c": "92229B", "n": "快速顎骨擴張器治療", "en": "Rapid palatal expander", "p": 6260, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.限非美容為目的之診療。2.每個案上下顎各施行乙次為原則。3.巳包含處置費、材料費及術後調整費用。4.個案需經事前審查同意後方可實施。"}, {"c": "92230B", "clean_c": "92230B", "n": "單側顱顎關節鏡手術", "en": "Temporomandibular joint arthroscopy", "p": 12861, "cats": [], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "註：1.需檢附術前一年內顱顎關節障礙初診特殊檢查表或顱顎關節障礙複診特殊檢查表。2.本項支付點數已包含鏡檢費用、一般及特殊材料費、單一使用拋棄式刮刀及磨刀在內。3.需檢附術前及術後之清晰照片。4.限牙醫門診申報。"}, {"c": "96001C", "clean_c": "96001C", "n": "牙科局部麻醉", "en": "Dental localized anesthesia", "p": 90, "cats": ["麻醉"], "ages": ["未滿十二歲"], "common_conds": [], "other_conds": [], "sn": "1.病歷需記載以象限為單位
+2.未滿二歲加成30%, 二歲以上至未滿七歲加成20%", "nt": "1.應就牙齒六區域（UR、UA、UL、LR、LA、LL）併同主處置申報，惟須於病歷上詳實記載。2.表面麻醉不得申報。"}, {"c": "96002C", "clean_c": "96002C", "n": "笑氣鎮痛", "en": "Nitrous oxide-oxygen sedation", "p": 200, "cats": ["麻醉"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "96003C", "clean_c": "96003C", "n": "朦朧麻醉", "en": "Heavy sedation", "p": 140, "cats": ["麻醉"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": ""}, {"c": "96004C", "clean_c": "96004C", "n": "靜脈或肌肉麻醉", "en": "IV or IM anesthesia", "p": 1598, "cats": ["麻醉"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "注腸麻醉比照申報。"}, {"c": "96017C", "clean_c": "96017C", "n": "半開放式或半閉鎖式面罩吸入全身麻醉法 －未滿二小時", "en": "Semi-opened or semi-closed mask Inhalstion general anesthesia - under 2 hours", "p": 3582, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": ["自閉症"], "sn": "", "nt": "註：1.限麻醉科專科醫師施行。2.牙科施行本項目須符合下列情況：(1)施行口腔顎面外科開刀房手術。(2)智障、自閉症、重度以上身心障礙病患。(3)兒童罹患全身性重大傷病或極端不合作，恐懼或焦慮，罹患廣泛的牙疾(含阻生齒)且，無法獲得良好的門診治療，經行為控制無效，無法施行局部麻醉，須以全身麻醉進行牙科治療者，須事前專案向保險人申請。"}, {"c": "96018C", "clean_c": "96018C", "n": "半開放式或半閉鎖式面罩吸入全身麻醉法 － 二小時至四小時，每增加三十分鐘", "en": "Semi-opened or semi-closed mask inhalation general anesthesia - 2-4 hours,each 30 minutes added", "p": 895, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": ["自閉症"], "sn": "", "nt": "註：1.限麻醉科專科醫師施行。2.牙科施行本項目須符合下列情況：(1)施行口腔顎面外科開刀房手術。(2)智障、自閉症、重度以上身心障礙病患。(3)兒童罹患全身性重大傷病或極端不合作，恐懼或焦慮，罹患廣泛的牙疾(含阻生齒)且，無法獲得良好的門診治療，經行為控制無效，無法施行局部麻醉，須以全身麻醉進行牙科治療者，須事前專案向保險人申請。"}, {"c": "96019C", "clean_c": "96019C", "n": "半開放式或半閉鎖式面罩吸入全身麻醉法 － 四小時以上，每增加三十分鐘", "en": "Semi-opened or semi-closed mask inhalation general anesthesia - over 4 hours,each 30 minutes added", "p": 1119, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": ["自閉症"], "sn": "", "nt": "註：1.限麻醉科專科醫師施行。2.牙科施行本項目須符合下列情況：(1)施行口腔顎面外科開刀房手術。(2)智障、自閉症、重度以上身心障礙病患。(3)兒童罹患全身性重大傷病或極端不合作，恐懼或焦慮，罹患廣泛的牙疾(含阻生齒)且，無法獲得良好的門診治療，經行為控制無效，無法施行局部麻醉，須以全身麻醉進行牙科治療者，須事前專案向保險人申請。"}, {"c": "96020C", "clean_c": "96020C", "n": "半閉鎖式或閉鎖循環式氣管內插管全身麻醉法–未滿二小時", "en": "Semi-closed or closed-circulative intratracheal intubation general anesthesia - under 2 hours", "p": 3917, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": ["自閉症"], "sn": "", "nt": "1.限麻醉科專科醫師施行。2.牙科施行「半閉鎖式或閉鎖循環式氣管內插管全身麻醉法」須符合下列情況：(1)施行口腔顎面外科開刀房手術。(2)智障、自閉症、重度以上身心障礙病人。(3)兒童罹患全身性重大傷病或極端不合作，恐懼或焦慮，罹患廣泛的牙疾(含阻生齒)且，無法獲得良好的門診治療，經行為控制無效，無法施行局部麻醉，須以全身麻醉進行牙科治療者，須事前專案向保險人申請。3.96020C不得同時申報96029C、96030C。"}, {"c": "96021C", "clean_c": "96021C", "n": "半閉鎖式或閉鎖循環式氣管內插管全身麻醉法–二小時至四小時 ，每增加三十分鐘", "en": "Semi-closed or closed-circulative intratracheal intubation general anesthesia-2-4 hours,each 30 minutes added", "p": 895, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": ["自閉症"], "sn": "", "nt": "1.限麻醉科專科醫師施行。2.牙科施行「半閉鎖式或閉鎖循環式氣管內插管全身麻醉法」須符合下列情況：(1)施行口腔顎面外科開刀房手術。(2)智障、自閉症、重度以上身心障礙病人。(3)兒童罹患全身性重大傷病或極端不合作，恐懼或焦慮，罹患廣泛的牙疾（含阻生齒）且無法獲得良好的門診治療，經行為控制無效，無法施行局部麻醉，須以全身麻醉進行牙科治療者，須事前專案向保險人申請。"}, {"c": "96022C", "clean_c": "96022C", "n": "半閉鎖式或閉鎖循環式氣管內插管全身麻醉法–超過四小時，每增加三十分鐘", "en": "Semi-closed or closed- circulative intratracheal intubation general anesthesia - over 4 hours,each 30 minutes added", "p": 1119, "cats": [], "ages": [], "common_conds": ["特殊需求者(特殊醫療服務)"], "other_conds": ["自閉症"], "sn": "", "nt": "1.限麻醉科專科醫師施行。2.牙科施行「半閉鎖式或閉鎖循環式氣管內插管全身麻醉法」須符合下列情況：(1)施行口腔顎面外科開刀房手術。(2)智障、自閉症、重度以上身心障礙病人。(3)兒童罹患全身性重大傷病或極端不合作，恐懼或焦慮，罹患廣泛的牙疾（含阻生齒）且無法獲得良好的門診治療，經行為控制無效，無法施行局部麻醉，須以全身麻醉進行牙科治療者，須事前專案向保險人申請。"}, {"c": "96029C", "clean_c": "96029C", "n": "半閉鎖式或閉鎖循環式氣管內插管全身麻醉法–未滿二小時-以影像導引氣管內插管-疑似或確診空氣或飛沫傳染性疾病", "en": "", "p": 5155, "cats": [], "ages": ["青少年"], "common_conds": ["惡性腫瘤", "癌", "特殊需求者(特殊醫療服務)"], "other_conds": ["甲狀腺", "自閉症", "張口困難", "頭頸部"], "sn": "", "nt": "1.限麻醉科專科醫師施行。2.牙科施行「半閉鎖式或閉鎖循環式氣管內插管全身麻醉法」須符合下列情況：(1)施行口腔顎面外科開刀房手術。(2)智障、自閉症、重度以上身心障礙病人。(3)兒童罹患全身性重大傷病或極端不合作，恐懼或焦慮，罹患廣泛的牙疾（含阻生齒）且無法獲得良好的門診治療，經行為控制無效，無法施行局部麻醉，須以全身麻醉進行牙科治療者，須事前專案向保險人申請。3.96029C適應症：(1)疑似或確診空氣或飛沫傳染法定傳染病、疑似或確診空氣或飛沫傳染其他傳染病。(2)兒童（未滿十九歲）符合下列任一情形：A.困難氣道：頭頸部癌症、甲狀腺癌/副甲狀腺癌、氣道狹窄、頸椎骨關節相關的病變或處置、重大頭頸部外傷、張口困難、肥胖。B.緊急狀況：心跳停止及呼吸窘迫之緊急插管。(3)不得同時申報96020C、96030C。4.96029C內含一般材料費、「甦醒球」及「單次拋棄式影像喉頭鏡葉片」。"}, {"c": "96030C", "clean_c": "96030C", "n": "半閉鎖式或閉鎖循環式氣管內插管全身麻醉法–未滿二小時-以影像導引氣管內插管-困難氣道或緊急狀況", "en": "", "p": 4597, "cats": [], "ages": [], "common_conds": ["惡性腫瘤", "癌", "特殊需求者(特殊醫療服務)"], "other_conds": ["甲狀腺", "自閉症", "張口困難", "頭頸部"], "sn": "", "nt": "1.限麻醉科專科醫師施行。2.牙科施行「半閉鎖式或閉鎖循環式氣管內插管全身麻醉法」須符合下列情況：(1)施行口腔顎面外科開刀房手術。(2)智障、自閉症、重度以上身心障礙病人。(3)兒童罹患全身性重大傷病或極端不合作，恐懼或焦慮，罹患廣泛的牙疾（含阻生齒）且無法獲得良好的門診治療，經行為控制無效，無法施行局部麻醉，須以全身麻醉進行牙科治療者，須事前專案向保險人申請。3.96030C適應症：(1)成人（十九歲以上）符合下列任一情形：A.困難氣道：頭頸部癌症、甲狀腺癌/副甲狀腺癌、氣道狹窄、頸椎骨關節相關的病變或處置、重大頭頸部外傷、張口困難、肥胖。B.緊急狀況：心跳停止及呼吸窘迫之緊急插管。(2)不得同時申報96020C、96029C。"}, {"c": "P3601C", "clean_c": "P3601C", "n": "特定疾病病人牙科就醫安全", "en": "", "p": 100, "cats": [], "ages": [], "common_conds": ["糖尿病", "高血壓", "心血管疾病", "惡性腫瘤", "癌", "特殊需求者(特殊醫療服務)"], "other_conds": ["抗骨鬆", "血液透析", "腹膜透析", "器官移植", "精神疾病", "帕金森氏症", "失智", "甲狀腺", "自體免疫"], "sn": "", "nt": "(一)適用對象：須符合下列條件之一1.糖尿病病人。2.高血壓病人。3.骨質疏鬆症病人(包含即將使用抗骨鬆藥物病人，病歷須記載)。4.心血管疾病病人。5.癌症病人。6.血液透析及腹膜透析病人。7.器官移植病人。8.精神疾病病人。9.帕金森氏症病人。10.失智症病人。11.甲狀腺相關疾病病人。12.與牙科治療相關之自體免疫性疾病病人。13.其他未明示之疾病病人。(二)該院所該牙醫師當年度第一次申報本項時，須填寫特定疾病病人牙科就醫安全計畫醫師自我考評表(如附件)。(三)申報本項前，牙醫師須至健保醫療資訊雲端查詢系統查詢病人資料。(四)病歷上需載明適用對象之相關資料。如：糖尿病病人-六個月內之醣化血紅素(HbA1c)或最近一次空腹血糖(AC sugar)、高血壓病人-三個月內血壓值或服用藥物名稱、骨質疏鬆症病人-相關針劑或用藥。"}, {"c": "P7101C", "clean_c": "P7101C", "n": "青少年齲齒控制照護處置", "en": "", "p": 300, "cats": [], "ages": ["青少年"], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.本項主要施行牙菌斑偵測、去除維護教導及牙菌斑清除，且病歷應記載供審查。2.可視需要申報X光攝影（費用另計，限申報34001C及34002C）。 3.每九十天限申報一次。4.不得併報91014C。"}, {"c": "P7102C", "clean_c": "P7102C", "n": "青少年齲齒氟化物治療", "en": "", "p": 500, "cats": [], "ages": ["青少年"], "common_conds": [], "other_conds": [], "sn": "", "nt": "1.限診斷為齲前白斑、初期齲齒、琺瑯缺損、齒質先天性發育異常者申報。2.須附一年內診斷X光片(費用另計，限申報34001C及34002C)或照片(照片費用內含)並病歷記載，以為審核。3.本項主要實施氟化物治療。4.每九十天限申報一次。5.申報本項後九十天內不得再申報92072C、92051B、P30002及P7302C。"}, {"c": "P7302C", "clean_c": "P7302C", "n": "齲齒經驗之高風險病人氟化物治療", "en": "Full mouth topical fluoride application for patients with caries experience at high risk for dental disease", "p": 500, "cats": [], "ages": ["六十五歲以上"], "common_conds": ["糖尿病", "心血管疾病", "惡性腫瘤", "特殊需求者(特殊醫療服務)"], "other_conds": ["雙磷酸鹽", "抗骨鬆", "血液透析", "腹膜透析"], "sn": "", "nt": "1.為提升病人牙齒之保存率，針對齲齒經驗之高風險病人，提供本項診療服務。2.適用對象：須符合下列條件之一者(1)六十五歲以上者。(2)糖尿病病人。(3)心血管疾病病人。(4)血液透析及腹膜透析病人。(5)使用雙磷酸鹽類或抗骨鬆單株抗體藥物病人。(6)惡性腫瘤病人。(7)非屬「全民健康保險牙醫門診總額特殊醫療服務計畫」院所牙醫醫療服務適用對象之身心障礙類別及障礙等級者。(8)曾於同院所接受89013C、89113C、91009B、91010B病人 (含當次)。3.每九十天限申報一次。4.本項支付點數含材料費。5.申報本項後九十天內不得再申報92051B、92072C、P30002、P7102C。"}, {"c": "P7303C", "clean_c": "P7303C", "n": "超音波根管沖洗", "en": "Ultrasonic irrigation in endodontics", "p": 100, "cats": ["根管"], "ages": [], "common_conds": [], "other_conds": [], "sn": "", "nt": "應與根管治療項目併同申報。"}];
+
+    let allItems = [];
+    let selectedCats = new Set();
+    let selectedAges = new Set();
+    let selectedCommonConds = new Set();
+    let selectedOtherCond = '';
+    let isPanelExpanded = true;
+
+    // 解析 H 欄位為獨立的中文標籤清單（若為空則傳回空陣列）
+    function parseCategoryField(val) {
+      if (!val || String(val).trim() === '' || String(val).trim() === 'nan') return [];
+      const raw = String(val).trim();
+      const parts = raw.split(/[\n\r,、/；;\s]+/);
+      const res = [];
+      const map = {
+        '洗牙': '洗牙', 'SCALING': '洗牙', 'PERI': '洗牙', 'PERIO': '洗牙',
+        '拔牙': '拔牙', 'EXTRACTION': '拔牙', 'OS': '拔牙',
+        '補牙': '補牙', 'OD': '補牙', 'RESTORATION': '補牙',
+        '根管': '根管', 'ENDO': '根管',
+        '兒牙': '兒牙', 'PEDO': '兒牙',
+        '牙統': '牙統',
+        '麻醉': '麻醉', 'ANESTHESIA': '麻醉',
+        'X光': 'X光', 'X-RAY': 'X光', 'RADIOGRAPHY': 'X光',
+        '急診': '急診/外傷', '外傷': '急診/外傷', '急診/外傷': '急診/外傷'
+      };
+      parts.forEach(p => {
+        const u = p.trim().toUpperCase();
+        if (map[p.trim()]) {
+          if (!res.includes(map[p.trim()])) res.push(map[p.trim()]);
+        } else if (map[u]) {
+          if (!res.includes(map[u])) res.push(map[u]);
+        }
+      });
+      return res;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      loadStoredData();
+      initDateCalculator();
+      // 瀏覽計數已移除
+      bindFilterEvents();
+      renderItems();
+    });
+
+    function loadStoredData() {
+      const stored = localStorage.getItem('ndmc_dental_codes_v5');
+      if (stored) {
+        try {
+          allItems = JSON.parse(stored);
+        } catch(e) {
+          allItems = DEFAULT_DATA;
+        }
+      } else {
+        allItems = DEFAULT_DATA;
+      }
+    }
+
+    function bindFilterEvents() {
+      const searchInput = document.getElementById('searchInput');
+      searchInput.addEventListener('input', (e) => {
+        const hasVal = e.target.value.trim().length > 0;
+        document.getElementById('clearSearchBtn').classList.toggle('hidden', !hasVal);
+        checkFiltersActive();
+        renderItems();
+      });
+
+      // 常用項目標籤點擊 (多選：多項須同時成立 AND)
+      document.querySelectorAll('.cat-tag').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.dataset.val;
+          if (selectedCats.has(val)) {
+            selectedCats.delete(val);
+            btn.classList.remove('tag-active');
+          } else {
+            selectedCats.add(val);
+            btn.classList.add('tag-active');
+          }
+          checkFiltersActive();
+          renderItems();
+        });
+      });
+
+      // 年齡限制標籤點擊
+      document.querySelectorAll('.age-tag').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.dataset.val;
+          if (selectedAges.has(val)) {
+            selectedAges.delete(val);
+            btn.classList.remove('tag-active');
+          } else {
+            selectedAges.add(val);
+            btn.classList.add('tag-active');
+          }
+          checkFiltersActive();
+          renderItems();
+        });
+      });
+
+      // 常用條件標籤點擊
+      document.querySelectorAll('.cond-tag').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.dataset.val;
+          if (selectedCommonConds.has(val)) {
+            selectedCommonConds.delete(val);
+            btn.classList.remove('tag-active');
+          } else {
+            selectedCommonConds.add(val);
+            btn.classList.add('tag-active');
+          }
+          checkFiltersActive();
+          renderItems();
+        });
+      });
+
+      // 其他條件下拉選單
+      document.getElementById('otherCondSelect').addEventListener('change', (e) => {
+        selectedOtherCond = e.target.value;
+        checkFiltersActive();
+        renderItems();
+      });
+
+      // 就診日期變動
+      document.getElementById('baseDatePicker').addEventListener('change', (e) => {
+        updateIntervalCalculations(new Date(e.target.value));
+      });
+    }
+
+    function checkFiltersActive() {
+      const hasSearch = document.getElementById('searchInput').value.trim().length > 0;
+      const hasFilters = selectedCats.size > 0 || selectedAges.size > 0 || selectedCommonConds.size > 0 || selectedOtherCond !== '';
+      document.getElementById('clearAllFiltersBtn').classList.toggle('hidden', !(hasSearch || hasFilters));
+    }
+
+        function handleSearchModeChange() {
+      const mode = document.getElementById('searchModeSelect').value;
+      const input = document.getElementById('searchInput');
+      if (mode === 'single_code') {
+        input.placeholder = '請輸入欲查詢的診療項目代碼 A 欄 (例: 92055C 或 92055)';
+      } else {
+        input.placeholder = '搜尋代碼、中英文名稱 (例: 92055 乳牙拔除 primary tooth extraction)';
+      }
+      renderItems();
+      input.focus();
+    }
+
+    function clearSearch() {
+      const searchInput = document.getElementById('searchInput');
+      searchInput.value = '';
+      document.getElementById('clearSearchBtn').classList.add('hidden');
+      checkFiltersActive();
+      renderItems();
+      searchInput.focus();
+    }
+
+    function resetAllFilters() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('clearSearchBtn').classList.add('hidden');
+      selectedCats.clear();
+      selectedAges.clear();
+      selectedCommonConds.clear();
+      selectedOtherCond = '';
+      document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('tag-active'));
+      document.getElementById('otherCondSelect').value = '';
+      checkFiltersActive();
+      renderItems();
+    }
+
+    // 渲染搜尋與多標籤過濾結果
+    function renderItems() {
+      const container = document.getElementById('codeListContainer');
+      const noResult = document.getElementById('noResult');
+      const query = document.getElementById('searchInput').value.trim().toLowerCase();
+      const keywords = query ? query.split(/\s+/).filter(Boolean) : [];
+
+      const filtered = allItems.filter(item => {
+        // 常用項目標籤：依照 H 欄位，如有兩項以上須「同時成立」 (AND)
+        if (selectedCats.size > 0) {
+          if (!item.cats || item.cats.length === 0) return false;
+          for (let cat of selectedCats) {
+            if (!item.cats.includes(cat)) {
+              return false;
+            }
+          }
+        }
+
+        // 年齡限制標籤：多選時符合任一項
+        if (selectedAges.size > 0) {
+          const matchAge = Array.from(selectedAges).some(a => item.ages && item.ages.includes(a));
+          if (!matchAge) return false;
+        }
+
+        // 常用條件標籤：多選時符合任一項
+        if (selectedCommonConds.size > 0) {
+          const matchCond = Array.from(selectedCommonConds).some(c => item.common_conds && item.common_conds.includes(c));
+          if (!matchCond) return false;
+        }
+
+        // 其他條件下拉選單
+        if (selectedOtherCond) {
+          if (!item.other_conds || !item.other_conds.includes(selectedOtherCond)) {
+            return false;
+          }
+        }
+
+        // 搜尋處理：依據所選模式 (多關鍵字搜尋 vs 單一申報碼搜尋)
+        if (query) {
+          const searchMode = document.getElementById('searchModeSelect').value;
+          if (searchMode === 'single_code') {
+            // 單一申報碼搜尋：只單純搜尋 EXCEL 檔中 A 欄位 (代碼)
+            const itemCode = (item.c || '').toLowerCase();
+            const cleanCode = (item.clean_c || item.c || '').toLowerCase();
+            const q = query.replace(/[^a-z0-9]/gi, '').toLowerCase();
+            const matchCode = itemCode.includes(query) || cleanCode.includes(q);
+            if (!matchCode) return false;
+          } else {
+            // 多關鍵字搜尋 (預設模式)：比對代碼、中英文名稱、科別標籤、點數、備註與特殊註記
+            if (keywords.length > 0) {
+              const cleanCode = (item.clean_c || item.c || '').toLowerCase();
+              const targetStr = `${item.c} ${cleanCode} ${item.n} ${item.en || ''} ${(item.cats || []).join(' ')} ${item.p} ${item.nt} ${item.sn || ''}`.toLowerCase();
+              const matchAll = keywords.every(kw => targetStr.includes(kw));
+              if (!matchAll) return false;
+            }
+          }
+        }
+
+        return true;
+      });
+
+      document.getElementById('resultCount').innerText = `共 ${filtered.length} 筆項目`;
+
+      if (filtered.length === 0) {
+        container.innerHTML = '';
+        noResult.classList.remove('hidden');
+        return;
+      }
+
+      noResult.classList.add('hidden');
+
+      let html = '';
+      filtered.forEach(it => {
+        // 渲染 H 欄位所產生的獨立標籤 (若 H 欄為空則不顯示標籤)
+        let badgesHtml = '';
+        if (it.cats && it.cats.length > 0) {
+          it.cats.forEach(c => {
+            let style = 'bg-slate-100 text-slate-700';
+            if (c === '兒牙') style = 'bg-pink-100 text-pink-700 font-semibold';
+            else if (c === '拔牙') style = 'bg-orange-100 text-orange-700 font-semibold';
+            else if (c === '補牙') style = 'bg-blue-100 text-blue-700 font-semibold';
+            else if (c === '根管') style = 'bg-rose-100 text-rose-700 font-semibold';
+            else if (c === '洗牙') style = 'bg-emerald-100 text-emerald-700 font-semibold';
+            else if (c === '麻醉') style = 'bg-teal-100 text-teal-700 font-semibold';
+            else if (c === 'X光') style = 'bg-indigo-100 text-indigo-700 font-semibold';
+            else if (c === '急診/外傷') style = 'bg-red-100 text-red-700 font-semibold';
+            badgesHtml += `<span class="text-[11px] px-2 py-0.5 rounded-full ${style}">${c}</span>`;
+          });
+        }
+
+        const engDisplay = it.en ? `<p class="text-xs text-slate-500 font-normal italic mt-0.5">${it.en}</p>` : '';
+
+        // I 欄位特殊註記：以紅字顯著呈現在 G 欄位備註最上方
+        let noteSection = '';
+        if (it.sn || it.nt) {
+          noteSection = `
+            <div class="mt-2 text-xs text-slate-600 bg-slate-50/80 rounded-lg p-2 leading-relaxed border border-slate-100 break-words">
+              ${it.sn ? `<strong class="text-rose-600 font-bold block mb-1">[特殊註記] ${it.sn}</strong>` : ''}
+              ${it.nt ? `<span class="text-slate-600">${it.nt}</span>` : ''}
+            </div>
+          `;
+        }
+
+        html += `
+          <div class="bg-white border border-slate-200/80 rounded-xl p-3.5 shadow-2xs hover:shadow-sm transition active:scale-[0.998]">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center flex-wrap gap-1.5 mb-1">
+                  <span onclick="copyText('${it.c}')" class="inline-flex items-center gap-1 font-mono text-sm font-bold text-blue-600 bg-blue-50/80 hover:bg-blue-100 px-2 py-0.5 rounded-lg cursor-pointer border border-blue-100 transition" title="點擊複製代碼">
+                    ${it.c}
+                    <i data-lucide="copy" class="w-3 h-3 text-blue-400"></i>
+                  </span>
+                  ${badgesHtml}
+                </div>
+                <h3 class="text-sm font-semibold text-slate-800 leading-snug break-words">${it.n}</h3>
+                ${engDisplay}
+              </div>
+              <div class="text-right flex-shrink-0">
+                <span class="text-base font-extrabold text-blue-600 leading-none">${it.p}</span>
+                <span class="text-[10px] text-slate-400 block mt-0.5">點數</span>
+              </div>
+            </div>
+            ${noteSection}
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+      lucide.createIcons();
+    }
+
+    function copyText(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(`已複製代碼: ${text}`);
+      }).catch(() => {
+        showToast(`複製: ${text}`);
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.innerText = msg;
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0');
+      }, 1600);
+    }
+
+    // 日期試算與推算 (60天前、90天前、180天前、360天前，共四格，無多餘說明)
+    function initDateCalculator() {
+      const today = new Date();
+      const picker = document.getElementById('baseDatePicker');
+      picker.value = formatDateYMD(today);
+      updateIntervalCalculations(today);
+    }
+
+    function setBaseDateToday() {
+      const today = new Date();
+      document.getElementById('baseDatePicker').value = formatDateYMD(today);
+      updateIntervalCalculations(today);
+      showToast('基準日已設為今日');
+    }
+
+    function formatDateYMD(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function formatDateDisplay(d) {
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${d.getFullYear()}/${m}/${day}`;
+    }
+
+    function updateIntervalCalculations(dateObj) {
+      if (isNaN(dateObj.getTime())) return;
+
+      document.getElementById('targetDateDisplay').innerText = `(今日: ${formatDateDisplay(dateObj)})`;
+
+      // 60天前基準日期
+      const d60 = new Date(dateObj.getTime() - 60 * 24 * 60 * 60 * 1000);
+      document.getElementById('date60').innerText = formatDateDisplay(d60);
+
+      // 90天前基準日期
+      const d90 = new Date(dateObj.getTime() - 90 * 24 * 60 * 60 * 1000);
+      document.getElementById('date90').innerText = formatDateDisplay(d90);
+
+      // 180天前基準日期
+      const d180 = new Date(dateObj.getTime() - 180 * 24 * 60 * 60 * 1000);
+      document.getElementById('date180').innerText = formatDateDisplay(d180);
+
+      // 360天前基準日期
+      const d360 = new Date(dateObj.getTime() - 360 * 24 * 60 * 60 * 1000);
+      document.getElementById('date360').innerText = formatDateDisplay(d360);
+    }
+
+    function toggleIntervalPanel() {
+      const content = document.getElementById('intervalContent');
+      const chevron = document.getElementById('panelChevron');
+      isPanelExpanded = !isPanelExpanded;
+      if (isPanelExpanded) {
+        content.classList.remove('hidden');
+        chevron.style.transform = 'rotate(0deg)';
+      } else {
+        content.classList.add('hidden');
+        chevron.style.transform = 'rotate(180deg)';
+      }
+    }
+
+
+    // 後台管理驗證 (密碼: ZXC1234)
+    function openAdminModal() {
+      document.getElementById('adminPasswordInput').value = '';
+      document.getElementById('passwordError').classList.add('hidden');
+      document.getElementById('passwordSection').classList.remove('hidden');
+      document.getElementById('uploadSection').classList.add('hidden');
+      document.getElementById('adminModal').classList.remove('hidden');
+      document.getElementById('adminPasswordInput').focus();
+    }
+
+    function closeAdminModal() {
+      document.getElementById('adminModal').classList.add('hidden');
+    }
+
+    function verifyPassword() {
+      const pwd = document.getElementById('adminPasswordInput').value.trim();
+      if (pwd === 'ZXC1234') {
+        document.getElementById('passwordSection').classList.add('hidden');
+        document.getElementById('uploadSection').classList.remove('hidden');
+        document.getElementById('passwordError').classList.add('hidden');
+      } else {
+        document.getElementById('passwordError').classList.remove('hidden');
+      }
+    }
+
+    // 處理上傳的新 Excel 檔 (支援 H欄=常用項目, I欄=特殊註記, G欄=備註)
+    function handleExcelUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const matrix = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+          if (!matrix || matrix.length <= 1) {
+            alert('無法讀取到 Excel 中的資料列！');
+            return;
+          }
+
+          const parsed = [];
+          for (let r = 1; r < matrix.length; r++) {
+            const row = matrix[r];
+            if (!row || !row[0]) continue;
+
+            const code = String(row[0] || '').trim();
+            const points = row[1] || 0;
+            const engName = String(row[4] || '').trim();
+            const name = String(row[5] || '').trim();
+            const notes = String(row[6] || '').trim(); // G 欄位: 備註
+            const rawH = row[7] !== undefined ? String(row[7]).trim() : ''; // H 欄位: 常用項目分類
+            const specialNote = row[8] !== undefined ? String(row[8]).trim() : ''; // I 欄位: 特殊註記
+
+            const cats = parseCategoryField(rawH);
+
+            // 年齡限制條件
+            const fullText = `${name} ${engName} ${notes} ${specialNote}`;
+            const ages = [];
+            if (/未滿(十二|12)歲|未滿(七|7|二|2|六|6)歲|乳牙|primary tooth|國小學童|嬰兒/i.test(fullText)) ages.push('未滿十二歲');
+            if (/青少年|十二歲以上|十八歲|未滿十九歲/i.test(fullText)) ages.push('青少年');
+            if (/六十五歲以上|65歲以上|失能老人|老人/i.test(fullText)) ages.push('六十五歲以上');
+
+            // 常用條件
+            const common_conds = [];
+            if (/特殊醫療服務|身心障礙|自閉症|失智症|精神疾病|特殊需求|special needs/i.test(fullText)) common_conds.push('特殊需求者(特殊醫療服務)');
+            if (/孕婦|懷孕/i.test(fullText)) common_conds.push('孕婦');
+            if (/糖尿病/i.test(fullText)) common_conds.push('糖尿病');
+            if (/高血壓/i.test(fullText)) common_conds.push('高血壓');
+            if (/心血管疾病/i.test(fullText)) common_conds.push('心血管疾病');
+            if (/惡性腫瘤/i.test(fullText)) common_conds.push('惡性腫瘤');
+            if (/癌/i.test(fullText)) common_conds.push('癌');
+            if (/口乾症|xerostomia/i.test(fullText)) common_conds.push('口乾症');
+            if (/窩溝封填/i.test(fullText)) common_conds.push('窩溝封填');
+
+            // 其他條件
+            const other_conds = [];
+            ['雙磷酸鹽', '抗骨鬆', '血液透析', '腹膜透析', '器官移植', '精神疾病', '帕金森氏症', '失智', '甲狀腺', '自體免疫', '自閉症', '洗腎', '張口困難', '愛滋病', '頭頸部'].forEach(oc => {
+              if (fullText.includes(oc)) other_conds.push(oc);
+            });
+
+            parsed.push({
+              c: code,
+              clean_c: code.replace(/[^A-Za-z0-9]/g, ''),
+              n: name,
+              en: engName,
+              p: points,
+              cats: cats,
+              ages: ages,
+              common_conds: common_conds,
+              other_conds: other_conds,
+              sn: specialNote,
+              nt: notes
+            });
+          }
+
+          if (parsed.length > 0) {
+            allItems = parsed;
+            localStorage.setItem('ndmc_dental_codes_v5', JSON.stringify(allItems));
+            renderItems();
+            closeAdminModal();
+            showToast(`成功匯入 ${parsed.length} 筆最新代碼！`);
+          } else {
+            alert('未能辨識出有效代碼，請確認欄位格式。');
+          }
+        } catch(err) {
+          console.error(err);
+          alert('解析 Excel 失敗，請確認檔案格式正確。');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function restoreDefaultData() {
+      if (confirm('確定要還原為系統預設資料庫嗎？')) {
+        localStorage.removeItem('ndmc_dental_codes_v5');
+        allItems = DEFAULT_DATA;
+        renderItems();
+        closeAdminModal();
+        showToast('已還原為預設資料');
+      }
+    }
+  </script>
+</body>
+</html>
