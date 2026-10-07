@@ -103,11 +103,11 @@
       <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="拔牙">拔牙</button>
       <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="補牙">補牙</button>
       <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="根管">根管</button>
+      <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="急診/外傷">急診/外傷</button>
       <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="兒牙">兒牙</button>
       <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="牙統">牙統</button>
-      <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="麻醉">麻醉</button>
       <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="X光">X光</button>
-      <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="急診/外傷">急診/外傷</button>
+      <button class="tag-btn cat-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="麻醉">麻醉</button>
     </div>
 
     <!-- <年齡限制> -->
@@ -121,15 +121,15 @@
     <!-- <常用條件> -->
     <div class="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5 text-xs">
       <span class="text-[11px] font-semibold text-slate-500 whitespace-nowrap pl-0.5 mr-0.5">&lt;常用條件&gt;:</span>
-      <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="特殊需求者(特殊醫療服務)">特殊需求者(特殊醫療服務)</button>
-      <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="孕婦">孕婦</button>
       <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="糖尿病">糖尿病</button>
       <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="高血壓">高血壓</button>
       <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="心血管疾病">心血管疾病</button>
       <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="惡性腫瘤">惡性腫瘤</button>
       <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="癌">癌</button>
-      <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="口乾症">口乾症</button>
+      <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="孕婦">孕婦</button>
       <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="窩溝封填">窩溝封填</button>
+      <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="口乾症">口乾症</button>
+      <button class="tag-btn cond-tag px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 whitespace-nowrap" data-val="特殊需求者(特殊醫療服務)">特殊需求者(特殊醫療服務)</button>
     </div>
 
     <!-- <其他條件> 下拉式選單 -->
@@ -228,17 +228,6 @@
           <div id="date360" class="text-xs sm:text-sm font-bold text-purple-950 mt-1 tracking-tight">--</div>
         </div>
       </div>
-
-      <!-- 底部統計 -->
-      <div class="flex items-center justify-between text-[10px] text-slate-400 mt-2.5 pt-1.5 border-t border-slate-100">
-        <div class="flex items-center gap-3">
-          <span>今日瀏覽人次: <strong id="todayVisits" class="text-slate-600 font-semibold">1</strong></span>
-          <span>總瀏覽人次: <strong id="totalVisits" class="text-slate-600 font-semibold">1</strong></span>
-        </div>
-        <div>三軍總醫院牙科部</div>
-      </div>
-    </div>
-  </div>
 
   <!-- 彈出視窗：後台匯入 Excel (需要密碼 ZXC1234) -->
   <div id="adminModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
